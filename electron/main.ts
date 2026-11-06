@@ -32,8 +32,8 @@ import {
   getAssistantRuntimeState
 } from "./local-models";
 
-const APP_NAME = "Mermaid Tool";
-const APP_ID = "com.adamgoodwin.mermaidtool";
+const APP_NAME = "DiagramDesk";
+const APP_ID = "com.adamgoodwin.diagramdesk";
 const IS_MAC = process.platform === "darwin";
 const TEXT_FILE_FILTERS = [
   {
@@ -109,7 +109,7 @@ function getTargetWindow(): BrowserWindow | null {
 function getWindowFromWebContents(webContents: Electron.WebContents): BrowserWindow {
   const browserWindow = BrowserWindow.fromWebContents(webContents);
   if (!browserWindow) {
-    throw new Error("The current Mermaid Tool window is not available.");
+    throw new Error("The current DiagramDesk window is not available.");
   }
 
   return browserWindow;
@@ -223,7 +223,7 @@ function buildMenu(): void {
           ? []
           : [
               { type: "separator" as const },
-              { role: "quit" as const, label: "Quit Mermaid Tool" }
+              { role: "quit" as const, label: "Quit DiagramDesk" }
             ])
       ]
     },
@@ -401,7 +401,7 @@ async function createWindow(initialDocuments: DocumentPayload[] = []): Promise<B
       cancelId: 1,
       defaultId: 1,
       message: "You have unsaved changes.",
-      detail: "Quit Mermaid Tool and discard the current unsaved edits?",
+      detail: "Quit DiagramDesk and discard the current unsaved edits?",
       type: "warning"
     });
 

@@ -10,7 +10,7 @@ import { _electron as electron } from "playwright-core";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const packagedExecutable = process.argv[2];
-const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "mermaid-tool-smoke-"));
+const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "diagramdesk-smoke-"));
 const failures = [];
 const usesRealClipboard = Boolean(process.env.CI);
 

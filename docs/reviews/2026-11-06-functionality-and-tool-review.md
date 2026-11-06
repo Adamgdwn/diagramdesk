@@ -4,6 +4,7 @@
 - Code reviewed: commit `e35ee01` on `main`, then the Windows and macOS changes and the fixes recorded here, on branch `installers/0.2.3`
 - Tested on: Windows 11 Home, build 26300, with Node 24.20.0 and npm 11.19.0, plus GitHub's Windows, macOS, and Linux runners
 - Reviewer: Claude Code session, for the project owner
+- Name: the app was called Mermaid Tool during this review, and is now DiagramDesk. See [the rename review](2026-11-06-rename-to-diagramdesk.md)
 
 ## Summary
 
@@ -194,7 +195,7 @@ A 480-edge flowchart rendered in about 3.5 seconds. Mermaid's limit stops anythi
 | Dependabot | PRs #11 to #13 are superseded by the updated lockfile and can be closed once it's merged |
 | Graphify | `graphify-out/` was committed, against the GitHub efficiency standard, and one update changed 25 tracked files and about 21,000 lines. It's now untracked |
 | Bundle | The main chunk is 4.1 MB and Vite warns about it. Harmless for a local app |
-| `package.json` | Version is now 0.2.3, matching the changelog. `homepage` points to mermaid.js.org rather than this product |
+| `package.json` | Version is now 0.2.3, matching the changelog. `homepage` now points to this product |
 
 ## Not Tested
 

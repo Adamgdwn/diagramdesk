@@ -1,14 +1,14 @@
 {
-  "name": "mermaid-tool",
-  "productName": "Mermaid Tool",
+  "name": "diagramdesk",
+  "productName": "DiagramDesk",
   "version": "0.2.3",
-  "description": "A Guided AI Labs local desktop Mermaid diagram editor with live preview and export tools.",
+  "description": "A local desktop app for flowcharts, Gantt charts, mind maps, and more, typed by hand or described to a local AI. Built on Mermaid, from Guided AI Labs.",
   "main": "dist/electron/main.js",
   "author": {
     "name": "Adam Goodwin",
     "email": "adamgoodwin@shaw.ca"
   },
-  "homepage": "https://mermaid.js.org/",
+  "homepage": "https://github.com/Adamgdwn/diagramdesk",
   "license": "MIT",
   "engines": {
     "node": ">=24"
@@ -58,7 +58,7 @@
     "vitest": "^4.0.0"
   },
   "build": {
-    "appId": "com.adamgoodwin.mermaidtool",
+    "appId": "com.adamgoodwin.diagramdesk",
     "artifactName": "${productName}-${version}-${arch}.${ext}",
     "asar": true,
     "directories": {
@@ -97,13 +97,13 @@
       ]
     },
     "nsis": {
-      "artifactName": "Mermaid-Tool-${version}-win-${arch}-setup.${ext}",
+      "artifactName": "DiagramDesk-${version}-win-${arch}-setup.${ext}",
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true
     },
     "mac": {
-      "artifactName": "Mermaid-Tool-${version}-mac-${arch}.${ext}",
+      "artifactName": "DiagramDesk-${version}-mac-${arch}.${ext}",
       "category": "public.app-category.graphics-design",
       "identity": "-",
       "target": [
@@ -133,9 +133,9 @@
       "category": "Graphics",
       "desktop": {
         "entry": {
-          "Comment": "Guided AI Labs local Mermaid diagram editor with live preview and export",
+          "Comment": "Guided AI Labs local diagram app with live preview and export, built on Mermaid",
           "MimeType": "text/x-mermaid;application/x-mermaid;text/plain;",
-          "StartupWMClass": "Mermaid Tool"
+          "StartupWMClass": "DiagramDesk"
         }
       },
       "executableArgs": [
@@ -145,7 +145,7 @@
         "--disable-software-rasterizer",
         "--in-process-gpu"
       ],
-      "executableName": "mermaid-tool",
+      "executableName": "diagramdesk",
       "icon": "icon.png",
       "mimeTypes": [
         "text/x-mermaid",

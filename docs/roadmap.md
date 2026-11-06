@@ -2,6 +2,7 @@
 
 ## Just Completed
 
+- renamed the app from Mermaid Tool to DiagramDesk
 - added Windows and macOS support, with installers built and smoke tested in CI on all three systems
 - fixed the seven critical findings from the review, including PNG export, lost typing, and crash recovery
 - bundled the editor so the app works offline, and upgraded to a supported Electron release
@@ -11,12 +12,13 @@
 - aligned `Save As` and `Open` so unsaved-work flows start in the same local draft/save folder
 - added a guided AI builder that can draft Mermaid changes through local-model conversation
 - refined the AI sidebar so the dialogue collapses upward while the diagram picker remains visible
-- refreshed the app chrome with the Guided AI Labs signal-spark brand treatment while keeping the Mermaid Tool icon unchanged
+- refreshed the app chrome with the Guided AI Labs signal-spark brand treatment
 - kept Linux packaging, launcher behavior, and docs in sync with the current desktop workflow
 
 ## Now
 
 - fix the remaining High findings in `docs/reviews/2026-11-06-functionality-and-tool-review.md`, which are mostly in the AI builder
+- finish the rename on Linux, using the steps in `docs/reviews/2026-11-06-rename-to-diagramdesk.md`
 - try the installers by hand: a browser-downloaded Windows setup, and a physical Mac
 - publish free installers through GitHub Releases
 - stabilize the new multi-tab, multi-window, and AI-guided workflow

@@ -23,12 +23,12 @@ describe("extractDiagramNodes", () => {
     expect(
       extractDiagramNodes(`sequenceDiagram
         actor User
-        participant App as Mermaid Tool
+        participant App as DiagramDesk
         participant Engine
       `)
     ).toEqual([
       { id: "User", kind: "actor", label: "User" },
-      { id: "App", kind: "participant", label: "Mermaid Tool" },
+      { id: "App", kind: "participant", label: "DiagramDesk" },
       { id: "Engine", kind: "participant", label: "Engine" }
     ]);
   });

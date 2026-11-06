@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-rm -f /usr/share/mime/packages/mermaid-tool.xml
+rm -f /usr/share/mime/packages/diagramdesk.xml
 
 if command -v update-mime-database >/dev/null 2>&1; then
   update-mime-database /usr/share/mime >/dev/null 2>&1 || true

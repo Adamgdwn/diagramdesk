@@ -19,7 +19,7 @@ describe("draft store", () => {
   let directory: string;
 
   beforeEach(() => {
-    directory = fs.mkdtempSync(path.join(os.tmpdir(), "mermaid-tool-drafts-"));
+    directory = fs.mkdtempSync(path.join(os.tmpdir(), "diagramdesk-drafts-"));
   });
 
   afterEach(() => {

@@ -16,7 +16,7 @@ import type {
 
 declare global {
   interface Window {
-    mermaidTool: {
+    diagramDesk: {
       clearDraft(draftId: string): Promise<void>;
       copyImage(request: CopyImageRequest): Promise<void>;
       createWindow(): Promise<void>;

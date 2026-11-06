@@ -1,4 +1,4 @@
-# Mermaid Tool
+# DiagramDesk
 
 ## Screenshots
 
@@ -13,13 +13,15 @@
 
 ## Purpose
 
-Mermaid Tool is a Guided AI Labs local desktop Mermaid editor for people who want a simple, polished way to open `.mmd` files, edit diagrams, preview them live, and export clean SVG or PNG assets without relying on a hosted web editor.
+DiagramDesk is a Guided AI Labs desktop app for making diagrams on your own computer: flowcharts, sequence diagrams, Gantt charts, mind maps, Kanban boards, and 20 other types. Type them, or describe them to a local AI model. It works offline, and your diagrams stay on your machine.
+
+It's built on the official [Mermaid](https://mermaid.js.org/) engine, and it opens and saves standard `.mmd` files. It was previously called Mermaid Tool.
 
 It is built for amateur-friendly local use:
 
 - open Mermaid files from disk
 - keep several documents open at once with tabs inside each window
-- open multiple Mermaid Tool windows for side-by-side work
+- open multiple DiagramDesk windows for side-by-side work
 - edit diagrams in a large Monaco-powered editor
 - preview changes immediately with the official `mermaid` package
 - open a collapsible AI builder rail on the left and shape diagrams through plain-language back and forth
@@ -32,7 +34,7 @@ It is built for amateur-friendly local use:
 - use a tighter default flowchart layout so complex diagrams stay more compact and readable
 - autosave in-progress drafts locally and recover them on restart
 - autosave each open tab as its own local recovery draft
-- save user files to a normal `Documents/Mermaid Tool` folder by default
+- save user files to a normal `Documents/DiagramDesk` folder by default
 - see whether a tab is only protected by recovery autosave or has a real saved file path
 - reveal saved diagrams in the system file manager
 - wipe the editor or delete the current saved file from inside the app
@@ -57,7 +59,7 @@ It is built for amateur-friendly local use:
 | macOS 13 or newer, Apple Silicon and Intel | `.dmg` and `.zip` | CI builds them, installs the Apple Silicon `.dmg`, and smoke tests the result. Not yet tried on a physical Mac, and the Intel build hasn't been run |
 | Linux, x64 | `.AppImage` and `.deb` | CI builds both, installs each one, and smoke tests the result |
 
-Mermaid Tool is free, so its installers aren't signed with a paid certificate. Windows SmartScreen and macOS Gatekeeper warn on first launch, and Windows Smart App Control may block the installer outright. See `docs/deployment-guide.md`.
+DiagramDesk is free, so its installers aren't signed with a paid certificate. Windows SmartScreen and macOS Gatekeeper warn on first launch, and Windows Smart App Control may block the installer outright. See `docs/deployment-guide.md`.
 
 ## Quick Start
 
@@ -70,7 +72,7 @@ Requires Node.js 24 or newer. These commands work the same on Windows, macOS, an
    - LM Studio with its local server enabled
    - `llama.cpp` or another OpenAI-compatible local server
 
-On Linux, you can also run `npm run install:desktop`, then launch from the desktop menu entry `Mermaid Tool` or with `bin/launch-mermaid-tool.sh`.
+On Linux, you can also run `npm run install:desktop`, then launch from the desktop menu entry `DiagramDesk` or with `bin/launch-diagramdesk.sh`.
 
 ## Building Installers
 
@@ -78,17 +80,17 @@ Each command writes to `release/` and must run on the system it targets, because
 
 | Command | Output |
 | --- | --- |
-| `npm run package:win` | `release/Mermaid-Tool-<version>-win-x64-setup.exe` |
-| `npm run package:mac` | `release/Mermaid-Tool-<version>-mac-arm64.dmg`, `-x64.dmg`, and matching `.zip` files |
-| `npm run package:linux` | `release/Mermaid Tool-<version>-x86_64.AppImage`, `release/Mermaid Tool-<version>-amd64.deb` |
+| `npm run package:win` | `release/DiagramDesk-<version>-win-x64-setup.exe` |
+| `npm run package:mac` | `release/DiagramDesk-<version>-mac-arm64.dmg`, `-x64.dmg`, and matching `.zip` files |
+| `npm run package:linux` | `release/DiagramDesk-<version>-x86_64.AppImage`, `release/DiagramDesk-<version>-amd64.deb` |
 | `npm run package:dir` | An unpacked app for the current system, for quick testing |
 
 Packaging also requires Python 3 to generate the app icons.
 
 ## File Associations
 
-- The Windows and macOS installers register `.mmd` and `.mermaid` so they can open in Mermaid Tool.
-- On Linux, the `.deb` registers them system-wide, and `npm run install:desktop` registers them for the current user at `~/.local/share/applications/mermaid-tool.desktop`, pointing at this repo checkout.
+- The Windows and macOS installers register `.mmd` and `.mermaid` so they can open in DiagramDesk.
+- On Linux, the `.deb` registers them system-wide, and `npm run install:desktop` registers them for the current user at `~/.local/share/applications/diagramdesk.desktop`, pointing at this repo checkout.
 
 ## Validation Commands
 

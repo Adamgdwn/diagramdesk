@@ -78,6 +78,13 @@ def segment_mask(
     return max(0.0, min(1.0, 0.5 - distance / feather))
 
 
+def half_ring_mask(x: float, y: float, cx: float, cy: float, radius: float, thickness: float, feather: float = 0.01) -> float:
+    if x < cx:
+        return 0.0
+    distance = abs(math.sqrt((x - cx) ** 2 + (y - cy) ** 2) - radius) - thickness
+    return max(0.0, min(1.0, 0.5 - distance / feather))
+
+
 def draw_icon(size: int) -> bytes:
     rows = []
 
@@ -94,19 +101,19 @@ def draw_icon(size: int) -> bytes:
             color = blend(color, plate, 0.9 * plate_mask)
 
         stroke = (17, 48, 66)
-        line_left = segment_mask(x, y, 0.24, 0.68, 0.24, 0.34, 0.02)
-        diag_left = segment_mask(x, y, 0.24, 0.34, 0.5, 0.6, 0.025)
-        diag_right = segment_mask(x, y, 0.76, 0.34, 0.5, 0.6, 0.025)
-        line_right = segment_mask(x, y, 0.76, 0.68, 0.76, 0.34, 0.02)
-        line_center = segment_mask(x, y, 0.5, 0.74, 0.5, 0.58, 0.02)
+        # A letter D drawn as a small diagram, with a node at each of its three corners.
+        stem = segment_mask(x, y, 0.30, 0.28, 0.30, 0.72, 0.03)
+        arm_top = segment_mask(x, y, 0.30, 0.28, 0.48, 0.28, 0.03)
+        arm_bottom = segment_mask(x, y, 0.30, 0.72, 0.48, 0.72, 0.03)
+        bowl = half_ring_mask(x, y, 0.48, 0.5, 0.22, 0.03)
 
-        for mask in [line_left, diag_left, diag_right, line_right, line_center]:
+        for mask in [stem, arm_top, arm_bottom, bowl]:
             if mask > 0:
                 color = blend(color, stroke, mask)
 
-        dot_orange = circle_mask(x, y, 0.24, 0.24, 0.055)
-        dot_blue = circle_mask(x, y, 0.76, 0.24, 0.055)
-        dot_green = circle_mask(x, y, 0.5, 0.78, 0.06)
+        dot_orange = circle_mask(x, y, 0.30, 0.28, 0.06)
+        dot_blue = circle_mask(x, y, 0.70, 0.5, 0.06)
+        dot_green = circle_mask(x, y, 0.30, 0.72, 0.06)
 
         if dot_orange > 0:
             color = blend(color, (255, 122, 89), dot_orange)

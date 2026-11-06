@@ -297,7 +297,7 @@ function App() {
   const saveButtonLabel = activeTab.documentPath ? "Save" : "Save...";
   const saveButtonTitle = activeTab.documentPath
     ? `Save changes to ${activeTab.documentPath}`
-    : `Choose where to save this diagram. New files start in ${storageInfo?.defaultSaveDirectory ?? "Documents/Mermaid Tool"}.`;
+    : `Choose where to save this diagram. New files start in ${storageInfo?.defaultSaveDirectory ?? "Documents/DiagramDesk"}.`;
   const fileLocationLabel = activeTab.documentPath ?? "Not saved to a file yet";
   const fileLocationDetail = activeTab.documentPath
     ? "Save overwrites this file. Save As lets you make a copy somewhere else."
@@ -424,7 +424,7 @@ function App() {
     setAssistantError("");
 
     try {
-      const runtimeState = await window.mermaidTool.getAssistantRuntimeState();
+      const runtimeState = await window.diagramDesk.getAssistantRuntimeState();
       setAssistantRuntimeState(runtimeState);
       setSelectedLocalModelId((currentValue) => currentValue || runtimeState.models[0]?.id || "");
 
@@ -444,7 +444,7 @@ function App() {
 
   async function deleteDraftById(draftId: string): Promise<void> {
     try {
-      await window.mermaidTool.clearDraft(draftId);
+      await window.diagramDesk.clearDraft(draftId);
     } catch {
       // Draft cleanup should not block the user flow.
     }
@@ -461,7 +461,7 @@ function App() {
     const updatedAt = new Date().toISOString();
 
     try {
-      await window.mermaidTool.saveDraft({
+      await window.diagramDesk.saveDraft({
         content: tab.source,
         draftId: tab.draftId,
         documentName: ensureMermaidExtension(tab.documentName),
@@ -501,7 +501,7 @@ function App() {
 
     for (const document of documents) {
       const existingTab = nextTabs.find((tab) => (
-        isSameDocumentPath(tab.documentPath, document.path, window.mermaidTool.platform)
+        isSameDocumentPath(tab.documentPath, document.path, window.diagramDesk.platform)
       ));
       if (existingTab) {
         nextActiveTabId = existingTab.id;
@@ -825,8 +825,8 @@ function App() {
   }
 
   async function handleNewWindow(): Promise<void> {
-    await window.mermaidTool.createWindow();
-    setStatusMessage("Opened a new Mermaid Tool window.");
+    await window.diagramDesk.createWindow();
+    setStatusMessage("Opened a new DiagramDesk window.");
   }
 
   async function handleSelectTab(tabId: string): Promise<void> {
@@ -880,7 +880,7 @@ function App() {
 
   async function handleOpenDocuments(): Promise<void> {
     try {
-      const { documents, failures } = await window.mermaidTool.openDocuments();
+      const { documents, failures } = await window.diagramDesk.openDocuments();
       appendDocumentsToTabs(documents, "open");
 
       if (failures.length > 0) {
@@ -900,12 +900,12 @@ function App() {
     let saveResult: SaveResult;
     try {
       saveResult = forceDialog || !activeSnapshot.documentPath
-        ? await window.mermaidTool.saveDocumentAs({
+        ? await window.diagramDesk.saveDocumentAs({
             content: activeSnapshot.source,
             path: activeSnapshot.documentPath,
             suggestedName
           })
-        : await window.mermaidTool.saveDocument({
+        : await window.diagramDesk.saveDocument({
             content: activeSnapshot.source,
             path: activeSnapshot.documentPath,
             suggestedName
@@ -942,7 +942,7 @@ function App() {
     }
 
     try {
-      await window.mermaidTool.showDocumentInFolder(documentPath);
+      await window.diagramDesk.showDocumentInFolder(documentPath);
       setStatusMessage(`Opened the folder for ${getFileNameFromPath(documentPath)}.`);
     } catch (error) {
       setStatusMessage(`Could not show the file location: ${formatErrorMessage(error)}`);
@@ -962,13 +962,13 @@ function App() {
       let png: PngExport | undefined;
 
       const saveResult = format === "svg"
-        ? await window.mermaidTool.exportAsset({
+        ? await window.diagramDesk.exportAsset({
             content: svgMarkup,
             encoding: "utf8",
             filters: [{ name: "SVG image", extensions: ["svg"] }],
             suggestedName
           })
-        : await window.mermaidTool.exportAsset({
+        : await window.diagramDesk.exportAsset({
             content: (png = await renderSvgToPng(svgMarkup, exportBackground)).dataUrl.split(",")[1] ?? "",
             encoding: "base64",
             filters: [{ name: "PNG image", extensions: ["png"] }],
@@ -999,7 +999,7 @@ function App() {
 
     try {
       const { dataUrl, wasReduced } = await renderSvgToPng(svgMarkup, exportBackground);
-      await window.mermaidTool.copyImage({ dataUrl });
+      await window.diagramDesk.copyImage({ dataUrl });
       setStatusMessage(
         wasReduced
           ? "Copied the preview image at reduced detail, because the diagram is very large."
@@ -1051,7 +1051,7 @@ function App() {
 
     event.preventDefault();
 
-    const gesture = resolveWheelGesture(event, window.mermaidTool.platform);
+    const gesture = resolveWheelGesture(event, window.diagramDesk.platform);
     if (gesture.kind === "pan") {
       setPanX((currentPanX) => currentPanX - gesture.deltaX);
       setPanY((currentPanY) => currentPanY - gesture.deltaY);
@@ -1208,7 +1208,7 @@ function App() {
     }
 
     try {
-      await window.mermaidTool.deleteDocument(activeTab.documentPath);
+      await window.diagramDesk.deleteDocument(activeTab.documentPath);
       await deleteDraftById(activeTab.draftId);
 
       replaceActiveTab(
@@ -1331,7 +1331,7 @@ function App() {
     setIsAssistantBusy(true);
 
     try {
-      const response = await window.mermaidTool.generateAssistantReply({
+      const response = await window.diagramDesk.generateAssistantReply({
         chatHistory: nextHistory,
         diagramType: requestDiagramType,
         model: requestModel.modelId,
@@ -1434,21 +1434,21 @@ function App() {
   useEffect(() => {
     let disposed = false;
 
-    const unsubscribeOpen = window.mermaidTool.onOpenDocument((incomingDocument) => {
+    const unsubscribeOpen = window.diagramDesk.onOpenDocument((incomingDocument) => {
       handleIncomingDocument(incomingDocument);
     });
 
-    const unsubscribeCommand = window.mermaidTool.onCommand((command) => {
+    const unsubscribeCommand = window.diagramDesk.onCommand((command) => {
       void handleAppCommand(command);
     });
 
     void (async () => {
       try {
         const [version, storage, launchDocuments, recovery] = await Promise.all([
-          window.mermaidTool.getAppVersion(),
-          window.mermaidTool.getStorageInfo(),
-          window.mermaidTool.getLaunchDocuments(),
-          window.mermaidTool.getRecoveredDrafts()
+          window.diagramDesk.getAppVersion(),
+          window.diagramDesk.getStorageInfo(),
+          window.diagramDesk.getLaunchDocuments(),
+          window.diagramDesk.getRecoveredDrafts()
         ]);
 
         if (disposed) {
@@ -1507,7 +1507,7 @@ function App() {
       setAssistantError("");
 
       try {
-        const runtimeState = await window.mermaidTool.getAssistantRuntimeState();
+        const runtimeState = await window.diagramDesk.getAssistantRuntimeState();
         if (disposed) {
           return;
         }
@@ -1580,10 +1580,10 @@ function App() {
     <div className="shell">
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark">M</div>
+          <div className="brand-mark">D</div>
           <div className="brand-copy">
             <p className="eyebrow">Guided AI Labs Studio</p>
-            <h1>Mermaid Tool</h1>
+            <h1>DiagramDesk</h1>
             <p className="brand-subtitle">Local diagram workspace</p>
           </div>
         </div>
@@ -1922,7 +1922,7 @@ function App() {
                       <h3>Turn on local suggestions</h3>
                     </div>
                     <p>
-                      Mermaid Tool works without AI. Start Ollama or LM Studio when you want private
+                      DiagramDesk works without AI. Start Ollama or LM Studio when you want private
                       diagram drafts and automatic syntax repair.
                     </p>
                     <button

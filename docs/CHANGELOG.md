@@ -4,6 +4,7 @@
 
 The first Windows and macOS build. Nothing has been published under this number yet, so the items recorded under it in April 2026 are included here.
 
+- renamed the app from Mermaid Tool to DiagramDesk, including its app ID, data folders, launchers, installer names, and icon. Older entries below keep the name used at the time
 - fixed PNG export and Copy Image, which lost labels and cropped nearly every diagram; they now match the preview, and the `canvg` dependency is gone
 - fixed Enter being taken by a word-suggestion popup after typing `flowchart TD`, by turning those suggestions off
 - fixed characters being lost while typing on large diagrams, and made the preview wait for a longer pause on diagrams that are slow to draw

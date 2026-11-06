@@ -2,7 +2,7 @@
 
 ## What This Project Is
 
-Mermaid Tool is a Guided AI Labs local desktop editor for Mermaid diagram files. It is meant to feel approachable for someone who just wants to open a file, edit the diagram text, and export a good-looking visual without learning a bigger design toolchain.
+DiagramDesk is a Guided AI Labs local desktop editor for Mermaid diagram files. It is meant to feel approachable for someone who just wants to open a file, edit the diagram text, and export a good-looking visual without learning a bigger design toolchain.
 
 ## How To Work In This Repo
 
@@ -24,15 +24,15 @@ Mermaid Tool is a Guided AI Labs local desktop editor for Mermaid diagram files.
 
 - `npm run start` builds the renderer and Electron code before launch, on every system.
 - `npm run package:win`, `npm run package:mac`, and `npm run package:linux` produce installers. Each must run on its own system, or through the manually started CI workflow.
-- On Linux, `bin/launch-mermaid-tool.sh` is the fastest repeat-launch path after dependencies are installed and rebuilds automatically when repo source files are newer than the built output.
-- On Linux, `npm run install:desktop` writes `~/.local/share/applications/mermaid-tool.desktop` so the repo checkout reuses the normal Mermaid Tool desktop ID instead of publishing a second launcher. On other systems it only prints a note.
+- On Linux, `bin/launch-diagramdesk.sh` is the fastest repeat-launch path after dependencies are installed and rebuilds automatically when repo source files are newer than the built output.
+- On Linux, `npm run install:desktop` writes `~/.local/share/applications/diagramdesk.desktop` so the repo checkout reuses the normal DiagramDesk desktop ID instead of publishing a second launcher. On other systems it only prints a note.
 - The editor and every other part of the app load from bundled files, so the app makes no internet requests of its own and works offline.
 - The app now supports multiple tabs per window and multiple windows at the same time.
 - `Ctrl+W` or `Cmd+W` closes the active tab. `Ctrl+Shift+W` or `Cmd+Shift+W` closes the window.
 - The left rail now includes a collapsible AI builder at the top of the sidebar.
 - The sidebar keeps the same width whether the dialogue is open or closed, and the starter diagram chooser stays visible below it.
 - The main toolbar is grouped by intent: start a diagram, keep work, share a visual, or use less-common maintenance actions.
-- The app chrome uses the Guided AI Labs signal-spark brand treatment while preserving the existing Mermaid Tool app icon.
+- The app chrome uses the Guided AI Labs signal-spark brand treatment while preserving the existing DiagramDesk app icon.
 - The AI builder uses local models only for now. It auto-detects Ollama, LM Studio, and other OpenAI-compatible local servers before the user has to think about endpoints.
 - If no local model is available, the assistant area explains that AI is optional and shows setup guidance without blocking manual editing.
 - Ollama still defaults to `http://127.0.0.1:11434`, while OpenAI-compatible local servers are checked on common local addresses such as LM Studio on `http://127.0.0.1:1234/v1` and `llama.cpp` on `http://127.0.0.1:8080/v1`.
@@ -45,8 +45,8 @@ Mermaid Tool is a Guided AI Labs local desktop editor for Mermaid diagram files.
 - A recovery draft that can't be read is moved to an `unreadable` folder inside the draft folder, and the status bar says so. The other drafts still recover.
 - A failed save or open shows a message saying why. After a failed save the tab stays marked unsaved, so nothing is lost.
 - Unsaved diagrams show a visible "File not chosen yet" location panel with direct `Save`, `Save As`, and disabled `Show Folder` controls.
-- New file saves default to `Documents/Mermaid Tool`, while existing saved files still default to their current folder.
-- `Open` now starts in `Documents/Mermaid Tool` by default so user-created files live in a normal documents location instead of hidden app data.
+- New file saves default to `Documents/DiagramDesk`, while existing saved files still default to their current folder.
+- `Open` now starts in `Documents/DiagramDesk` by default so user-created files live in a normal documents location instead of hidden app data.
 - Saved diagrams show their full file path in the editor and can be revealed with `Show Folder`.
 - `Open` can import several files in one pass and adds them as tabs instead of replacing the active document.
 - `Wipe` clears the current editor contents without deleting the file on disk until you save.

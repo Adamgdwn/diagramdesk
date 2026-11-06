@@ -15,7 +15,7 @@ import type {
   SaveResult
 } from "../shared/contracts";
 
-contextBridge.exposeInMainWorld("mermaidTool", {
+contextBridge.exposeInMainWorld("diagramDesk", {
   platform: process.platform,
   createWindow(): Promise<void> {
     return ipcRenderer.invoke("window:new");

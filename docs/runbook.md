@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Operate and recover the local Mermaid Tool desktop application on a workstation.
+Operate and recover the local DiagramDesk desktop application on a workstation.
 
 ## Alerts And Failures
 
@@ -13,18 +13,18 @@ Operate and recover the local Mermaid Tool desktop application on a workstation.
 - macOS says the app can't be opened or is from an unidentified developer: go to **System Settings > Privacy & Security** and choose **Open Anyway**.
 - macOS says the app is damaged: the build lost its ad-hoc signature, or the file was altered. Rebuild with `npm run package:mac`, and check `"identity": "-"` is still under `build.mac` in `package.json`.
 - Linux desktop icon does nothing: rerun `npm run install:desktop` and confirm the launcher script is executable.
-- Two Mermaid Tool launchers are visible on Linux: rerun `npm run install:desktop`, confirm only `~/.local/share/applications/mermaid-tool.desktop` exists locally, then refresh the desktop session cache if needed.
-- `.mmd` file does not open in Mermaid Tool: on Windows and macOS, reinstall the app or use **Open with** to choose it. On Linux, rerun `npm run install:desktop` or reinstall the Debian package to refresh MIME registration.
+- Two DiagramDesk launchers are visible on Linux: rerun `npm run install:desktop`, confirm only `~/.local/share/applications/diagramdesk.desktop` exists locally, then refresh the desktop session cache if needed.
+- `.mmd` file does not open in DiagramDesk: on Windows and macOS, reinstall the app or use **Open with** to choose it. On Linux, rerun `npm run install:desktop` or reinstall the Debian package to refresh MIME registration.
 - A shell script fails with `bad interpreter` or `$'\r'`: it was checked out with Windows line endings. `.gitattributes` prevents this for new checkouts. For an existing one, run `git rm --cached -r . && git reset --hard`, which discards uncommitted changes.
 - Preview fails: inspect the Mermaid syntax in the editor and confirm the preview pane shows a valid render.
 - AI builder cannot find models: confirm at least one supported local runtime is running, then refresh the model list in the left rail.
 - Ollama checks `http://127.0.0.1:11434/api/tags` by default, LM Studio checks its OpenAI-compatible local server, and `llama.cpp` or similar servers are expected to expose `/v1/models`.
 - AI dialogue layout feels wrong: confirm the repo build is the version being launched, then verify the dialogue collapses upward at the top of the left sidebar while starter diagram cards remain visible underneath.
 - Guided AI Labs branding looks stale or missing: rerun `npm run build`, confirm `assets/guided-ai-labs-signal-spark.svg` is present, and confirm the launched app is using the rebuilt `dist/` output.
-- Mermaid Tool icon looks wrong: confirm `assets/mermaid-tool-icon.svg` and `scripts/generate-icons.py` were not changed, then regenerate package icons only if packaging output is stale.
+- DiagramDesk icon looks wrong: confirm `assets/diagramdesk-icon.svg` and `scripts/generate-icons.py` were not changed, then regenerate package icons only if packaging output is stale.
 - Export fails: confirm the preview is healthy first, then retry SVG or PNG export. If only PNG fails on a very large diagram, export SVG instead.
 - File open or save fails: the message gives the reason. Confirm the target path is writable and the file still exists. After a failed save, the tab stays marked unsaved, so use Save As to put the work somewhere else.
-- Unsaved work is confusing: confirm the editor location panel says "File not chosen yet"; recovery drafts live in hidden app data, while user-created saves default to `Documents/Mermaid Tool`.
+- Unsaved work is confusing: confirm the editor location panel says "File not chosen yet"; recovery drafts live in hidden app data, while user-created saves default to `Documents/DiagramDesk`.
 - The status bar says a recovery draft couldn't be read: the app moved it to the `unreadable` folder inside the draft folder listed below. The file may still hold usable text, so open it in a text editor to rescue it. Delete it once you're done.
 - Autosave recovery looks wrong, or the status bar says "Startup recovery failed": inspect the per-tab draft files in the draft folder listed below, and remove stale `.json` entries you do not want restored.
 - Packaged install problems: inspect `release/` artifacts and re-run package generation. On Linux, also confirm `dpkg -i` completed.
@@ -33,8 +33,8 @@ Operate and recover the local Mermaid Tool desktop application on a workstation.
 
 | Location | Windows | macOS | Linux |
 | --- | --- | --- | --- |
-| Recovery drafts | `%APPDATA%\Mermaid Tool\drafts\` | `~/Library/Application Support/Mermaid Tool/drafts/` | `~/.config/Mermaid Tool/drafts/` |
-| Saved diagrams, by default | `Documents\Mermaid Tool\` | `~/Documents/Mermaid Tool/` | `~/Documents/Mermaid Tool/` |
+| Recovery drafts | `%APPDATA%\DiagramDesk\drafts\` | `~/Library/Application Support/DiagramDesk/drafts/` | `~/.config/DiagramDesk/drafts/` |
+| Saved diagrams, by default | `Documents\DiagramDesk\` | `~/Documents/DiagramDesk/` | `~/Documents/DiagramDesk/` |
 
 ## Dependencies
 
@@ -55,7 +55,7 @@ Operate and recover the local Mermaid Tool desktop application on a workstation.
 4. Run `npm run package:win`, `npm run package:mac`, or `npm run package:linux` if the issue is specific to installers.
 5. Remove `dist/` and `release/` and rebuild if launch or package assets look stale.
 6. On Linux, reinstall the launcher with `npm run install:desktop`.
-7. Confirm the Guided AI Labs lockup appears in the header and the Mermaid Tool app icon still uses the existing icon artwork.
+7. Confirm the Guided AI Labs lockup appears in the header and the DiagramDesk app icon still uses the existing icon artwork.
 8. Remove abandoned draft `.json` files from the draft folder if the app keeps restoring work you no longer want.
 
 ## Escalation

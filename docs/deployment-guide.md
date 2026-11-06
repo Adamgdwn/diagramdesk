@@ -28,7 +28,7 @@ This project is a local desktop app, so deployment means preparing a machine to 
 
 ### Windows
 
-Run `release/Mermaid-Tool-<version>-win-x64-setup.exe`. It installs for the current user without administrator rights by default, and offers a choice of folder.
+Run `release/DiagramDesk-<version>-win-x64-setup.exe`. It installs for the current user without administrator rights by default, and offers a choice of folder.
 
 The installer isn't signed, by owner decision, because the app is free. SmartScreen may show "Windows protected your PC". Choose **More info**, then **Run anyway**.
 
@@ -36,7 +36,7 @@ On a PC with Smart App Control on, an unsigned installer may be blocked with no 
 
 ### macOS
 
-Open `release/Mermaid-Tool-<version>-mac-arm64.dmg` on Apple Silicon or `-x64.dmg` on Intel, then drag the app to Applications.
+Open `release/DiagramDesk-<version>-mac-arm64.dmg` on Apple Silicon or `-x64.dmg` on Intel, then drag the app to Applications.
 
 The app has only an ad-hoc signature, because Apple's Developer ID requires a paid membership. macOS blocks it on first launch: try to open it, then go to **System Settings > Privacy & Security** and choose **Open Anyway**.
 
@@ -47,10 +47,10 @@ If that decision ever changes, replace `"identity": "-"` under `build.mac` in `p
 Choose one:
 
 - `npm run install:desktop` for the local source checkout flow
-- `sudo dpkg -i "release/Mermaid Tool-<version>-amd64.deb"` for a system package
-- `chmod +x "release/Mermaid Tool-<version>-x86_64.AppImage"` and launch the AppImage directly
+- `sudo dpkg -i "release/DiagramDesk-<version>-amd64.deb"` for a system package
+- `chmod +x "release/DiagramDesk-<version>-x86_64.AppImage"` and launch the AppImage directly
 
-Then launch `Mermaid Tool` from the applications menu, the installed package, the AppImage, or `bin/launch-mermaid-tool.sh`.
+Then launch `DiagramDesk` from the applications menu, the installed package, the AppImage, or `bin/launch-diagramdesk.sh`.
 
 ## Continuous Integration
 
@@ -66,15 +66,15 @@ Standard GitHub-hosted runners are free for public repositories. If this reposit
 
 ## Rollback
 
-Windows: uninstall Mermaid Tool from **Settings > Apps > Installed apps**.
+Windows: uninstall DiagramDesk from **Settings > Apps > Installed apps**.
 
-macOS: delete Mermaid Tool from Applications.
+macOS: delete DiagramDesk from Applications.
 
 Linux:
 
-1. Remove the desktop entry at `~/.local/share/applications/mermaid-tool.desktop` if installed.
-2. Remove `~/.local/share/mime/packages/mermaid-tool.xml` and refresh MIME caches if reverting local file association.
-3. Uninstall the Debian package with `sudo dpkg -r mermaid-tool` if it was installed system-wide.
+1. Remove the desktop entry at `~/.local/share/applications/diagramdesk.desktop` if installed.
+2. Remove `~/.local/share/mime/packages/diagramdesk.xml` and refresh MIME caches if reverting local file association.
+3. Uninstall the Debian package with `sudo dpkg -r diagramdesk` if it was installed system-wide.
 
 All systems:
 
@@ -88,7 +88,7 @@ Uninstalling does not remove recovery drafts or saved diagrams. See `docs/runboo
 
 - confirm the app launches without renderer errors
 - disconnect from the network, launch, and confirm the editor still loads
-- confirm the Guided AI Labs signal-spark lockup appears in the app chrome while the Mermaid Tool app icon remains unchanged
+- confirm the Guided AI Labs signal-spark lockup appears in the app chrome while the DiagramDesk app icon remains unchanged
 - open one or more sample `.mmd` files
 - change the text and verify the preview refreshes
 - save the file and confirm disk changes
@@ -106,12 +106,12 @@ Uninstalling does not remove recovery drafts or saved diagrams. See `docs/runboo
 - confirm the app fits the window at the default and minimum sizes, with the diagram visible on launch
 - type `flowchart TD` then Enter in a new tab, and confirm the cursor moves to a new line
 - on Linux, confirm the desktop launcher opens the app from the menu
-- on Linux, confirm only one Mermaid Tool launcher is shown when the local desktop entry overrides the packaged app
-- confirm `.mmd` and `.mermaid` open in Mermaid Tool after installation, both with the app closed and with it already running
-- confirm packaged metadata still uses the Mermaid Tool product name with the Guided AI Labs desktop comment
+- on Linux, confirm only one DiagramDesk launcher is shown when the local desktop entry overrides the packaged app
+- confirm `.mmd` and `.mermaid` open in DiagramDesk after installation, both with the app closed and with it already running
+- confirm packaged metadata still uses the DiagramDesk product name with the Guided AI Labs desktop comment
 - confirm dirty tabs recover after relaunch
 - confirm the AI builder can discover at least one supported local runtime when one is running
 - confirm the AI dialogue collapses upward while starter diagram cards remain visible in the sidebar
 - confirm `Ctrl+W` or `Cmd+W` closes only the active tab, and `Ctrl+Shift+W` or `Cmd+Shift+W` closes the window
-- on a Mac, confirm the first menu is named Mermaid Tool and holds About and Quit
+- on a Mac, confirm the first menu is named DiagramDesk and holds About and Quit
 - confirm the installer for each system runs cleanly: the Windows setup, the macOS `.dmg`, the Linux AppImage, and the `.deb`

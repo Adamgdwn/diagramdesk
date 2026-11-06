@@ -114,7 +114,7 @@ jobs:
       - run: npm run ${{ matrix.script }}
       - uses: actions/upload-artifact@v4
         with:
-          name: mermaid-tool-${{ matrix.artifact }}-${{ github.sha }}-installers
+          name: diagramdesk-${{ matrix.artifact }}-${{ github.sha }}-installers
           path: ${{ matrix.files }}
           retention-days: 7
           if-no-files-found: error
@@ -124,24 +124,24 @@ jobs:
         shell: pwsh
         run: |
           $setup = (Get-ChildItem release/*-setup.exe | Select-Object -First 1).FullName
-          $target = Join-Path $env:RUNNER_TEMP "mermaid-tool"
+          $target = Join-Path $env:RUNNER_TEMP "diagramdesk"
           Start-Process -Wait -FilePath $setup -ArgumentList "/S", "/D=$target"
-          node scripts/smoke-test.mjs (Join-Path $target "Mermaid Tool.exe")
+          node scripts/smoke-test.mjs (Join-Path $target "DiagramDesk.exe")
       # CI files aren't quarantined, so this doesn't exercise the Gatekeeper prompt a downloaded copy gets.
       - name: Install and smoke test (macOS)
         if: runner.os == 'macOS'
         run: |
           arch=$([ "$(uname -m)" = "arm64" ] && echo arm64 || echo x64)
           hdiutil attach release/*-mac-$arch.dmg -mountpoint "$RUNNER_TEMP/dmg" -nobrowse
-          cp -R "$RUNNER_TEMP/dmg/Mermaid Tool.app" "$RUNNER_TEMP/"
+          cp -R "$RUNNER_TEMP/dmg/DiagramDesk.app" "$RUNNER_TEMP/"
           hdiutil detach "$RUNNER_TEMP/dmg"
-          node scripts/smoke-test.mjs "$RUNNER_TEMP/Mermaid Tool.app/Contents/MacOS/Mermaid Tool"
+          node scripts/smoke-test.mjs "$RUNNER_TEMP/DiagramDesk.app/Contents/MacOS/DiagramDesk"
       - name: Install and smoke test (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb
           sudo apt-get install -y ./release/*.deb
-          xvfb-run --auto-servernum node scripts/smoke-test.mjs "/opt/Mermaid Tool/mermaid-tool"
+          xvfb-run --auto-servernum node scripts/smoke-test.mjs "/opt/DiagramDesk/diagramdesk"
           chmod +x release/*.AppImage
           APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run --auto-servernum node scripts/smoke-test.mjs release/*.AppImage

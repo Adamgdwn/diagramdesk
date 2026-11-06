@@ -4,7 +4,7 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 electron_bin="${repo_root}/node_modules/electron/dist/electron"
-log_dir="${XDG_STATE_HOME:-${HOME}/.local/state}/mermaid-tool"
+log_dir="${XDG_STATE_HOME:-${HOME}/.local/state}/diagramdesk"
 log_file="${log_dir}/launcher.log"
 
 needs_rebuild=false

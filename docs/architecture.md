@@ -2,13 +2,13 @@
 
 ## Summary
 
- Mermaid Tool is a Guided AI Labs local-first Electron desktop application for Windows, macOS, and Linux. The main process handles file dialogs, save and export writes, draft persistence, multi-window lifecycle, launch-time file opening, and the local-model bridge for AI-assisted diagram drafting. The renderer provides a polished editing interface built with React, Monaco Editor, and the official Mermaid rendering engine.
+ DiagramDesk is a Guided AI Labs local-first Electron desktop application for Windows, macOS, and Linux. The main process handles file dialogs, save and export writes, draft persistence, multi-window lifecycle, launch-time file opening, and the local-model bridge for AI-assisted diagram drafting. The renderer provides a polished editing interface built with React, Monaco Editor, and the official Mermaid rendering engine.
 
 ## Components
 
 - `electron/main.ts`: creates desktop windows, exposes file open/save/delete/export handlers, routes launch-time file opening into the right window, stores per-tab drafts in Electron user data, and brokers dirty-window close confirmation.
 - `electron/draft-store.ts`: reads and writes recovery drafts. Writes are atomic and run in order for each draft, and an unreadable draft is set aside so it can't block the others.
-- `electron/preload.ts`: safely bridges IPC methods into the renderer through `window.mermaidTool`, including local runtime discovery and assistant chat requests.
+- `electron/preload.ts`: safely bridges IPC methods into the renderer through `window.diagramDesk`, including local runtime discovery and assistant chat requests.
 - `electron/local-models.ts`: probes supported local AI runtimes, lists models, and routes assistant chat requests to the chosen runtime.
 - `src/App.tsx`: application shell, Guided AI Labs-branded chrome, tab workspace, fixed-width sidebar, top-collapsing AI dialogue shell, starter diagram chooser, node selector, multi-document editing workflow, preview, CSS-transform preview zoom and pan, fit-width and whole-view controls, fullscreen presentation mode, template loading, and export actions.
 - `src/lib/assistant.ts`: extracts node-like elements from Mermaid text, normalizes AI drafts, and provides assistant copy used by the renderer.
@@ -21,7 +21,7 @@
 - `scripts/start-electron.mjs`, `scripts/clean-electron-build.mjs`, `scripts/run-generate-icons.mjs`, `scripts/secret-scan.mjs`, `scripts/install-desktop.mjs`: cross-platform replacements for shell-only npm scripts.
 - `scripts/smoke-test.mjs`: drives the built app end to end with all remote hosts blocked. CI runs it on all three systems.
 - `.github/workflows/ci.yml`: fast checks on Linux, then smoke tests on Linux, Windows, and macOS, with installers built only on request.
-- `bin/launch-mermaid-tool.sh`: Linux launcher that builds on demand and starts the Electron app.
+- `bin/launch-diagramdesk.sh`: Linux launcher that builds on demand and starts the Electron app.
 - `scripts/install-desktop-entry.sh`: installs a Linux desktop entry in `~/.local/share/applications`.
 
 ## Platform Differences
@@ -29,8 +29,8 @@
 | Area | Windows | macOS | Linux |
 | --- | --- | --- | --- |
 | Hardware acceleration and Chromium sandbox | On | On | Off, to work around desktop GPU driver problems. Packaged builds pass `--no-sandbox` |
-| Menu | File, Edit, View | Mermaid Tool, File, Edit, View, Window | File, Edit, View |
-| Quit | File menu | Mermaid Tool menu | File menu |
+| Menu | File, Edit, View | DiagramDesk, File, Edit, View, Window | File, Edit, View |
+| Quit | File menu | DiagramDesk menu | File menu |
 | Closing the last window | Quits | App stays open; menu commands open a new window | Quits |
 | File handed over by the system | Command-line argument or second instance | `open-file` event | Command-line argument or second instance |
 | Plain scroll over the preview | Zoom | Pan | Zoom |
@@ -72,5 +72,6 @@ The app is local-only by default. It does not require a backend, does not move m
 - Ship a Linux desktop entry instead of requiring the user to remember terminal commands after setup.
 - Bundle Monaco instead of using the editor wrapper's default CDN, so the app works offline and runs no remote code.
 - Keep npm scripts free of shell-specific commands, so the same commands work on all three systems.
+- Name the product DiagramDesk and credit Mermaid as its engine. Mermaid stays in the name of anything that really is Mermaid: the `.mmd` format, file types, and the AI prompts.
 - Let the editor own its text while typing, and push text into it only when the app itself changes a document. Each tab has one editor model for its lifetime, so saving keeps the undo history.
 - Write user documents in place rather than atomically, because replacing the file would silently overwrite read-only files and could lose its permissions. Only recovery drafts use atomic writes.
