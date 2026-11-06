@@ -1023,9 +1023,10 @@ function App() {
 
     const availableWidth = canvas.clientWidth;
     const availableHeight = canvas.clientHeight;
+    // Whole leaves a margin on every side, so the 16-pixel minimum offset below can't push the diagram's edge out of view.
     const fittedZoom = clampZoom(
       strategy === "whole"
-        ? Math.min(availableWidth / svgSize.width, availableHeight / svgSize.height)
+        ? Math.min((availableWidth - 32) / svgSize.width, (availableHeight - 32) / svgSize.height)
         : availableWidth / svgSize.width
     );
 

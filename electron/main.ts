@@ -21,6 +21,7 @@ import type {
   DraftPayload,
   DocumentPayload,
   OpenDocumentsResult,
+  RecoveredDrafts,
   SaveAssetRequest,
   SaveDocumentRequest,
   SaveResult
@@ -46,6 +47,8 @@ const queuedLaunchDocuments: DocumentPayload[] = [];
 // A window joins this set once its page has asked for its launch documents, which is also the moment
 // its file listener is attached. Until then documents wait in pendingLaunchDocuments so none are lost.
 const windowsReadyForDocuments = new Set<number>();
+// Each draft belongs to the window using it, so a second window can't adopt it, then overwrite or delete it.
+const draftOwners = new Map<string, number>();
 
 // Works around GPU driver problems on Linux desktops. Windows and macOS keep hardware acceleration.
 if (process.platform === "linux") {
@@ -148,6 +151,22 @@ function getAppStorageInfo(): AppStorageInfo {
     defaultSaveDirectory: getDefaultSaveDirectoryPath(),
     draftDirectory: getDraftDirectoryPath()
   };
+}
+
+async function recoverDraftsForWindow(windowId: number): Promise<RecoveredDrafts> {
+  const recovered = await readDrafts(getDraftDirectoryPath());
+  const available = recovered.drafts.filter((draft) => (draftOwners.get(draft.draftId) ?? windowId) === windowId);
+  available.forEach((draft) => draftOwners.set(draft.draftId, windowId));
+
+  return { ...recovered, drafts: available };
+}
+
+function releaseDraftsOwnedBy(windowId: number): void {
+  for (const [draftId, ownerId] of draftOwners) {
+    if (ownerId === windowId) {
+      draftOwners.delete(draftId);
+    }
+  }
 }
 
 // One unreadable file shouldn't stop the others from opening, so each one reports its own result.
@@ -373,6 +392,7 @@ async function createWindow(initialDocuments: DocumentPayload[] = []): Promise<B
     windows.delete(windowId);
     pendingLaunchDocuments.delete(windowId);
     windowsReadyForDocuments.delete(windowId);
+    releaseDraftsOwnedBy(windowId);
   });
 
   browserWindow.webContents.on("will-prevent-unload", (event) => {
@@ -515,14 +535,16 @@ ipcMain.handle("clipboard:copyImage", async (_event, request: CopyImageRequest) 
   await copyImageToClipboard(request);
 });
 
-ipcMain.handle("draft:getRecovered", async () => {
-  return readDrafts(getDraftDirectoryPath());
+ipcMain.handle("draft:getRecovered", async (event) => {
+  return recoverDraftsForWindow(getWindowFromWebContents(event.sender).id);
 });
 
-ipcMain.handle("draft:save", async (_event, draft: DraftPayload) => {
+ipcMain.handle("draft:save", async (event, draft: DraftPayload) => {
+  draftOwners.set(draft.draftId, getWindowFromWebContents(event.sender).id);
   await writeDraft(getDraftDirectoryPath(), draft);
 });
 
 ipcMain.handle("draft:clear", async (_event, draftId: string) => {
+  draftOwners.delete(draftId);
   await clearDraft(getDraftDirectoryPath(), draftId);
 });

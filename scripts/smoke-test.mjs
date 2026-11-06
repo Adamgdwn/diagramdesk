@@ -118,11 +118,34 @@ const waitForStatus = (fragment) => page.waitForFunction(
   { timeout: 30_000 }
 );
 
+const hasEditorFocus = () => page.evaluate(() => Boolean(document.activeElement?.closest(".monaco-editor")));
+
+// A click can land before a just-created editor has drawn, and then it doesn't take focus. No person
+// is that fast, so this tries again, and logs it so a real focus problem would still be noticed.
 async function focusEditorEnd() {
-  const box = await page.locator(".monaco-editor .view-lines").first().boundingBox();
-  await page.mouse.click(box.x + 60, box.y + 12);
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const box = await page.locator(".monaco-editor .view-lines").first().boundingBox();
+    await page.mouse.click(box.x + 60, box.y + 12);
+    if (await hasEditorFocus()) {
+      break;
+    }
+
+    log(`note: editor did not take focus on click ${attempt}`);
+    await sleep(250);
+  }
+
+  assert.ok(await hasEditorFocus(), "the editor never took focus");
   await page.keyboard.press(process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End");
 }
+
+// Everything needed to tell apart a lost keystroke, a missing focus, and a missing draft from one log line.
+const describeAppState = () => page.evaluate(() => JSON.stringify({
+  activeTab: document.querySelector(".tabchip-active .tabchip-title")?.textContent,
+  editor: [...document.querySelectorAll(".monaco-editor .view-line")].map((line) => line.textContent).slice(0, 4),
+  focus: `${document.activeElement?.tagName}.${document.activeElement?.className}`,
+  status: document.querySelector(".statusbar span")?.textContent,
+  tabs: document.querySelectorAll(".tabchip-title").length
+}));
 
 function readDraftContents() {
   return fs.readdirSync(drafts)
@@ -142,7 +165,8 @@ async function waitForDraft(matches, timeout = 30_000) {
     await sleep(200);
   }
 
-  throw new Error(`no matching draft; last lines were: ${readDraftContents().map((content) => content.split("\n").at(-1)).join(" | ")}`);
+  const lastLines = readDraftContents().map((content) => content.split("\n").at(-1));
+  throw new Error(`no matching draft; last lines ${JSON.stringify(lastLines)}, app state ${await describeAppState()}`);
 }
 
 await step("editor loads with no network", async () => {
@@ -198,6 +222,19 @@ await step("autosave stops once nothing has changed", async () => {
   const before = fs.statSync(draftFile).mtimeMs;
   await sleep(4000);
   assert.equal(fs.statSync(draftFile).mtimeMs, before);
+});
+
+await step("a second window leaves the first window's drafts alone", async () => {
+  const draftsBefore = readDraftContents();
+  const [secondWindow] = await Promise.all([app.waitForEvent("window"), button("Window").click()]);
+  await secondWindow.locator(".monaco-editor .view-lines").first().waitFor({ state: "visible", timeout: 30_000 });
+  await secondWindow.waitForFunction(() => !document.querySelector(".statusbar")?.textContent.includes("v0.0.0"), null, { timeout: 15_000 });
+
+  const title = await secondWindow.locator(".tabchip-active .tabchip-title").innerText();
+  assert.ok(!title.endsWith("*"), `second window opened with unsaved tab ${title}`);
+
+  await secondWindow.close();
+  assert.deepEqual(readDraftContents(), draftsBefore);
 });
 
 await step("failed save reports the problem and keeps the changes", async () => {
