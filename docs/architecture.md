@@ -7,12 +7,14 @@
 ## Components
 
 - `electron/main.ts`: creates desktop windows, exposes file open/save/delete/export handlers, routes launch-time file opening into the right window, stores per-tab drafts in Electron user data, and brokers dirty-window close confirmation.
+- `electron/draft-store.ts`: reads and writes recovery drafts. Writes are atomic and run in order for each draft, and an unreadable draft is set aside so it can't block the others.
 - `electron/preload.ts`: safely bridges IPC methods into the renderer through `window.mermaidTool`, including local runtime discovery and assistant chat requests.
 - `electron/local-models.ts`: probes supported local AI runtimes, lists models, and routes assistant chat requests to the chosen runtime.
 - `src/App.tsx`: application shell, Guided AI Labs-branded chrome, tab workspace, fixed-width sidebar, top-collapsing AI dialogue shell, starter diagram chooser, node selector, multi-document editing workflow, preview, CSS-transform preview zoom and pan, fit-width and whole-view controls, fullscreen presentation mode, template loading, and export actions.
 - `src/lib/assistant.ts`: extracts node-like elements from Mermaid text, normalizes AI drafts, and provides assistant copy used by the renderer.
 - `src/lib/document.ts`: document naming, diagram detection, path matching, and export filename helpers.
-- `src/lib/export.ts`: SVG-to-PNG conversion using `canvg`.
+- `src/lib/export.ts`: SVG sizing and SVG-to-PNG conversion, drawn by the browser engine so the image matches the preview.
+- `src/lib/file-errors.ts`: turns system file errors into plain reasons for the user.
 - `src/lib/monaco-setup.ts`: points the editor at the bundled Monaco and its worker, so nothing loads from a CDN.
 - `src/lib/preview-navigation.ts`: turns wheel, trackpad, and pinch input into pan or zoom for each platform.
 - `src/lib/templates.ts`: built-in starter diagrams for amateur-friendly onboarding.
@@ -43,7 +45,7 @@ Files handed over by the system wait in the main process until the window's page
 2. The renderer keeps independent tab state for content, save status, theme, and recovery draft metadata.
 3. Mermaid renders the active tab source into SVG entirely on the client.
 4. The optional AI builder keeps the starter diagram chooser visible at all times, expands a dialogue shell at the top of the left sidebar, and sends the current Mermaid source, focused node, and chat history to the chosen local runtime for a full updated Mermaid draft.
-5. When a tab is dirty, the renderer debounces a per-tab autosave request to the main process.
+5. When a dirty tab's contents change, the renderer debounces a per-tab autosave request to the main process.
 6. Export actions generate SVG text or render PNG bytes locally for the active tab.
 7. The Electron main process writes files chosen by the user to local disk and can restore multiple draft tabs on restart.
 
@@ -56,7 +58,6 @@ The app is local-only by default. It does not require a backend, does not move m
 - `@monaco-editor/react` and `monaco-editor`: editing experience, bundled into the app by Vite
 - `mermaid`: official diagram rendering engine from `mermaid-js/mermaid`
 - local AI runtimes over localhost, including Ollama and OpenAI-compatible servers such as LM Studio or `llama.cpp`
-- `canvg`: local SVG to PNG rasterization
 - `vite`: renderer bundling
 - `electron-builder`: installers for each system
 - `typescript`, `eslint`, `vitest`, `playwright-core`: validation and maintainability
@@ -71,3 +72,5 @@ The app is local-only by default. It does not require a backend, does not move m
 - Ship a Linux desktop entry instead of requiring the user to remember terminal commands after setup.
 - Bundle Monaco instead of using the editor wrapper's default CDN, so the app works offline and runs no remote code.
 - Keep npm scripts free of shell-specific commands, so the same commands work on all three systems.
+- Let the editor own its text while typing, and push text into it only when the app itself changes a document. Each tab has one editor model for its lifetime, so saving keeps the undo history.
+- Write user documents in place rather than atomically, because replacing the file would silently overwrite read-only files and could lose its permissions. Only recovery drafts use atomic writes.

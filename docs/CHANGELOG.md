@@ -4,6 +4,16 @@
 
 The first Windows and macOS build. Nothing has been published under this number yet, so the items recorded under it in April 2026 are included here.
 
+- fixed PNG export and Copy Image, which lost labels and cropped nearly every diagram; they now match the preview, and the `canvg` dependency is gone
+- fixed Enter being taken by a word-suggestion popup after typing `flowchart TD`, by turning those suggestions off
+- fixed characters being lost while typing on large diagrams, and made the preview wait for a longer pause on diagrams that are slow to draw
+- made recovery drafts safe against crashes during a write, and made an unreadable draft move to an `unreadable` folder instead of blocking all recovery
+- stopped autosave rewriting drafts every second when nothing had changed
+- made failed saves and opens show a message saying why, and keep the tab marked unsaved
+- made the app fit the window, with each panel scrolling inside itself, so the diagram is visible on launch; the window can now shrink to 1024 by 640
+- stopped a new window copying another window's unsaved tabs, since both then overwrote the same draft
+- kept undo history when a tab is saved or renamed, which also makes an applied AI draft undoable
+- fixed a new tab fitting its diagram using the previous tab's size
 - added Windows and macOS support: installers for each system, a native macOS menu, per-platform GPU and sandbox settings, and `.mmd` and `.mermaid` file associations
 - made every npm script work on Windows, macOS, and Linux by replacing shell-only commands with Node scripts; `scripts/secret-scan.sh` became `scripts/secret-scan.mjs` and no longer needs ripgrep
 - bundled the Monaco editor into the app, so it no longer downloads from a CDN at runtime and a new install works with no internet

@@ -2,7 +2,8 @@
 
 ## Just Completed
 
-- added Windows and macOS support, with macOS still to be verified on real hardware or in CI
+- added Windows and macOS support, with installers built and smoke tested in CI on all three systems
+- fixed the seven critical findings from the review, including PNG export, lost typing, and crash recovery
 - bundled the editor so the app works offline, and upgraded to a supported Electron release
 - shipped a tabbed workspace so multiple Mermaid files can stay open at once in a single window
 - added multi-window support for side-by-side editing sessions
@@ -15,10 +16,9 @@
 
 ## Now
 
-- fix the priority findings in `docs/reviews/2026-11-06-functionality-and-tool-review.md`, starting with PNG export
-- verify the macOS build through CI, then on a real Mac
-- run the Windows installer on a clean machine
-- publish free installers through GitHub Releases once the critical findings are fixed
+- fix the remaining High findings in `docs/reviews/2026-11-06-functionality-and-tool-review.md`, which are mostly in the AI builder
+- try the installers by hand: a browser-downloaded Windows setup, and a physical Mac
+- publish free installers through GitHub Releases
 - stabilize the new multi-tab, multi-window, and AI-guided workflow
 - verify reinstall and daily-use behavior for the `0.2.x` packaged app
 - smoke-test the Guided AI Labs branded chrome in local launch and packaged flows

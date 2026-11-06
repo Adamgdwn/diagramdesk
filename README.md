@@ -53,9 +53,9 @@ It is built for amateur-friendly local use:
 
 | Platform | Installer | Tested so far |
 | --- | --- | --- |
-| Windows 10 and 11, x64 | `.exe` setup | App built and tested on Windows 11. The installer has not been produced or run, because Smart App Control blocks its unsigned build helper on the development machine; CI can build it |
-| macOS 13 or newer, Apple Silicon and Intel | `.dmg` and `.zip` | Configured, not yet built or run. macOS builds require a Mac or the CI workflow |
-| Linux, x64 | `.AppImage` and `.deb` | Unchanged packaging; not rebuilt during the 2026-11-06 work |
+| Windows 10 and 11, x64 | `.exe` setup | Tested on Windows 11. CI builds the installer, installs it, and smoke tests the result |
+| macOS 13 or newer, Apple Silicon and Intel | `.dmg` and `.zip` | CI builds them, installs the Apple Silicon `.dmg`, and smoke tests the result. Not yet tried on a physical Mac, and the Intel build hasn't been run |
+| Linux, x64 | `.AppImage` and `.deb` | CI builds both, installs each one, and smoke tests the result |
 
 Mermaid Tool is free, so its installers aren't signed with a paid certificate. Windows SmartScreen and macOS Gatekeeper warn on first launch, and Windows Smart App Control may block the installer outright. See `docs/deployment-guide.md`.
 
@@ -74,7 +74,7 @@ On Linux, you can also run `npm run install:desktop`, then launch from the deskt
 
 ## Building Installers
 
-Each command writes to `release/` and must run on the system it targets, because macOS installers can only be built on a Mac. The manually started CI workflow builds all three.
+Each command writes to `release/` and must run on the system it targets, because macOS installers can only be built on a Mac. CI builds all three when you push a branch under `installers/`.
 
 | Command | Output |
 | --- | --- |

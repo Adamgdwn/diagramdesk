@@ -41,6 +41,9 @@ Mermaid Tool is a Guided AI Labs local desktop editor for Mermaid diagram files.
 - Inside the expanded dialogue, the transcript and prompt composer stay near the top of the frame so the conversation starts where the user is already looking.
 - The app warns before replacing unsaved work in-editor and before closing the window with unsaved edits.
 - In-progress edits autosave per tab to the Electron user-data folder and are recovered automatically on the next normal launch, but that recovery draft is not treated as the user's saved file.
+- Each window keeps its own recovery drafts. A new window starts clean instead of copying another window's unsaved tabs. Once a window has closed, its drafts return in the next window opened or the next launch.
+- A recovery draft that can't be read is moved to an `unreadable` folder inside the draft folder, and the status bar says so. The other drafts still recover.
+- A failed save or open shows a message saying why. After a failed save the tab stays marked unsaved, so nothing is lost.
 - Unsaved diagrams show a visible "File not chosen yet" location panel with direct `Save`, `Save As`, and disabled `Show Folder` controls.
 - New file saves default to `Documents/Mermaid Tool`, while existing saved files still default to their current folder.
 - `Open` now starts in `Documents/Mermaid Tool` by default so user-created files live in a normal documents location instead of hidden app data.
@@ -58,5 +61,7 @@ Mermaid Tool is a Guided AI Labs local desktop editor for Mermaid diagram files.
 - Built-in templates are meant as onboarding shortcuts, not authoritative Mermaid examples for every syntax feature.
 - The built-in templates focus on common business diagrams such as client journeys, support handoffs, launch plans, strategy maps, data models, and approval workflows.
 - Export works best after the preview is green and rendering successfully.
+- PNG exports use double resolution. A very large diagram is scaled down to fit, and the status bar says when that happens. SVG keeps full detail.
+- On a large diagram the preview waits for a longer pause in typing, so the editor stays responsive.
 - `Copy Image` places a PNG version of the current preview on the system clipboard for quick sharing in documents and messages.
 - The Windows and macOS installers register `.mmd` and `.mermaid`. On Linux, `npm run install:desktop` registers them locally through the desktop database and MIME database.

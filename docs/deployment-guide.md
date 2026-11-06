@@ -32,7 +32,7 @@ Run `release/Mermaid-Tool-<version>-win-x64-setup.exe`. It installs for the curr
 
 The installer isn't signed, by owner decision, because the app is free. SmartScreen may show "Windows protected your PC". Choose **More info**, then **Run anyway**.
 
-On a PC with Smart App Control on, an unsigned installer may be blocked with no override. The same setting stops `npm run package:win` from finishing, because electron-builder has to run an unsigned helper. On such a PC, build the installer through CI instead.
+On a PC with Smart App Control on, an unsigned installer may be blocked with no override. The CI-built installer did open its wizard on such a PC, but that copy wasn't downloaded through a browser, which adds a mark Windows can treat differently. The same setting stops `npm run package:win` from finishing, because electron-builder has to run an unsigned helper. On such a PC, build the installer through CI instead.
 
 ### macOS
 
@@ -102,7 +102,9 @@ Uninstalling does not remove recovery drafts or saved diagrams. See `docs/runboo
 - on Windows and Linux, scroll over the preview canvas and confirm zoom follows the cursor in normal and fullscreen modes
 - on a Mac, confirm two-finger scrolling pans, and pinch or Command+scroll zooms around the cursor
 - use `Fit Width` and `Whole` and confirm large diagrams can be reviewed both as a readable document and as a full-map overview
-- export both SVG and PNG successfully
+- export both SVG and PNG, and confirm the PNG shows the labels and the whole diagram
+- confirm the app fits the window at the default and minimum sizes, with the diagram visible on launch
+- type `flowchart TD` then Enter in a new tab, and confirm the cursor moves to a new line
 - on Linux, confirm the desktop launcher opens the app from the menu
 - on Linux, confirm only one Mermaid Tool launcher is shown when the local desktop entry overrides the packaged app
 - confirm `.mmd` and `.mermaid` open in Mermaid Tool after installation, both with the app closed and with it already running

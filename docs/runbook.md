@@ -22,10 +22,11 @@ Operate and recover the local Mermaid Tool desktop application on a workstation.
 - AI dialogue layout feels wrong: confirm the repo build is the version being launched, then verify the dialogue collapses upward at the top of the left sidebar while starter diagram cards remain visible underneath.
 - Guided AI Labs branding looks stale or missing: rerun `npm run build`, confirm `assets/guided-ai-labs-signal-spark.svg` is present, and confirm the launched app is using the rebuilt `dist/` output.
 - Mermaid Tool icon looks wrong: confirm `assets/mermaid-tool-icon.svg` and `scripts/generate-icons.py` were not changed, then regenerate package icons only if packaging output is stale.
-- Export fails: confirm the preview is healthy first, then retry SVG or PNG export.
-- File open or save fails: confirm the target path is writable and the file still exists.
+- Export fails: confirm the preview is healthy first, then retry SVG or PNG export. If only PNG fails on a very large diagram, export SVG instead.
+- File open or save fails: the message gives the reason. Confirm the target path is writable and the file still exists. After a failed save, the tab stays marked unsaved, so use Save As to put the work somewhere else.
 - Unsaved work is confusing: confirm the editor location panel says "File not chosen yet"; recovery drafts live in hidden app data, while user-created saves default to `Documents/Mermaid Tool`.
-- Autosave recovery looks wrong, or the status bar says "Startup recovery failed": inspect the per-tab draft files in the draft folder listed below. Remove stale `.json` entries you do not want restored, and any that are empty or truncated, because one unreadable draft currently stops all drafts from being recovered.
+- The status bar says a recovery draft couldn't be read: the app moved it to the `unreadable` folder inside the draft folder listed below. The file may still hold usable text, so open it in a text editor to rescue it. Delete it once you're done.
+- Autosave recovery looks wrong, or the status bar says "Startup recovery failed": inspect the per-tab draft files in the draft folder listed below, and remove stale `.json` entries you do not want restored.
 - Packaged install problems: inspect `release/` artifacts and re-run package generation. On Linux, also confirm `dpkg -i` completed.
 
 ## Where Files Live
