@@ -26,10 +26,10 @@
     "start:built": "node scripts/start-electron.mjs",
     "start": "npm run build && npm run start:built",
     "install:desktop": "node scripts/install-desktop.mjs",
-    "package:win": "npm run generate:icons && npm run build && electron-builder --win nsis",
-    "package:mac": "npm run generate:icons && npm run build && electron-builder --mac dmg zip",
-    "package:linux": "npm run generate:icons && npm run build && electron-builder --linux AppImage deb",
-    "package:dir": "npm run generate:icons && npm run build && electron-builder --dir",
+    "package:win": "npm run generate:icons && npm run build && electron-builder --win nsis --publish never",
+    "package:mac": "npm run generate:icons && npm run build && electron-builder --mac dmg zip --publish never",
+    "package:linux": "npm run generate:icons && npm run build && electron-builder --linux AppImage deb --publish never",
+    "package:dir": "npm run generate:icons && npm run build && electron-builder --dir --publish never",
     "secret-scan": "node scripts/secret-scan.mjs"
   },
   "dependencies": {
