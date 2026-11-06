@@ -120,8 +120,8 @@ const waitForStatus = (fragment) => page.waitForFunction(
 
 const hasEditorFocus = () => page.evaluate(() => Boolean(document.activeElement?.closest(".monaco-editor")));
 
-// A click can land before a just-created editor has drawn, and then it doesn't take focus. No person
-// is that fast, so this tries again, and logs it so a real focus problem would still be noticed.
+// On CI, a click soon after an editor appears sometimes doesn't take focus. The cause isn't confirmed
+// (L9 in the review), so this tries again, and logs it so a change in how often it happens gets noticed.
 async function focusEditorEnd() {
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     const box = await page.locator(".monaco-editor .view-lines").first().boundingBox();

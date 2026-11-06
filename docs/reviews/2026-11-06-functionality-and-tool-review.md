@@ -102,6 +102,7 @@ The smoke test separately runs 20 steps with all remote hosts blocked. CI runs i
 | L6 | Low | Zoom is shared across tabs rather than kept per tab. |
 | L7 | Low | The editor highlights Mermaid as Markdown, so ordinary brackets show in red. |
 | L8 | Low | The preview canvas stays light in the dark theme, so lines are faint there, although the exported PNG is correct. A theme set inside the file itself isn't seen by export, so a dark diagram set that way still gets a white background. |
+| L9 | Low | A click soon after an editor first appears sometimes doesn't take focus. It logged 2 to 4 times per CI build across 7 smoke runs, on the Linux and macOS runners, and caused one test failure on Linux before the test began retrying. It never happened in 43 tries on this Windows machine, even at 20 times CPU slowdown. The cause isn't confirmed. A person would at worst need to click again, and no typed text was lost once the editor had focus. |
 
 M6, the panels stacking in one column below 1280 pixels, is fixed by the C7 work. They now stack only below 1000 CSS pixels, which takes a large app zoom to reach.
 
@@ -186,7 +187,7 @@ A 480-edge flowchart rendered in about 3.5 seconds. Mermaid's limit stops anythi
 | Unit tests | Grew from 11 to 39, and all pass. They now cover drafts, export sizing, and error messages, but not the renderer's tab state |
 | Smoke test (new) | `npm run test:smoke` drives the real app with all remote hosts blocked, in 20 steps. Its 8 regression steps were confirmed to fail on the code before the fixes, though the Enter and large-diagram steps may have failed there because of C7 rather than their own bugs. The harness's typing checks confirm C3 separately |
 | Review harness | The 172-check harness lives outside the repo. The smoke test now carries the checks that matter most, so it isn't essential to bring in |
-| CI (new) | Passing. Fast checks on Linux, then smoke tests on all three systems. A branch under `installers/` also builds, installs, and tests the installers. Standard runners are free for public repos, and metered if the repo goes private. On Linux, the smoke test sometimes clicks a new editor before it has drawn, so it retries and logs a note |
+| CI (new) | Passing. Fast checks on Linux, then smoke tests on all three systems. A branch under `installers/` also builds, installs, and tests the installers. Standard runners are free for public repos, and metered if the repo goes private. The smoke test retries a click that doesn't take focus and logs a note, see L9 |
 | ESLint | Passes. The complexity rule isn't configured |
 | Complexity | `App()` still scores 87, against a threshold of 21. That's the same baseline as before these fixes, not a regression. No new function exceeds 10. It remains about 2,000 lines and holds almost all of the app's state, so splitting out tab and draft state is still worthwhile |
 | Governance preflight | Passes, but only checks that files and script names exist. Needs `bash`; on Windows use Git Bash, because `bash` in PowerShell can start WSL |
