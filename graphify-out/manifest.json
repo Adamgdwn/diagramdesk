@@ -1,202 +1,267 @@
 {
   "automation/governance_check.sh": {
-    "mtime": 1775922407.8153305,
+    "mtime": 1793984782.10463,
     "ast_hash": "685a7a6373c8d68f0a7743c87d4a73c6",
     "semantic_hash": ""
   },
   "bin/desktop-launch-mermaid-tool.sh": {
-    "mtime": 1775923730.2095373,
+    "mtime": 1793984782.105855,
     "ast_hash": "ad71c45b6f017e87dabbcfc4b7999570",
     "semantic_hash": ""
   },
   "bin/launch-mermaid-tool.sh": {
-    "mtime": 1779053807.0069158,
-    "ast_hash": "c8dc821f0939db2c42f35f2e0bab5be7",
+    "mtime": 1793984782.107865,
+    "ast_hash": "c6bc68d090c31c31df42bf9e7b3dc953",
     "semantic_hash": ""
   },
   "electron/local-models.ts": {
-    "mtime": 1779054533.753797,
-    "ast_hash": "26df056e80ad9949678fd9cd2cf8fb56",
+    "mtime": 1793977468.16278,
+    "ast_hash": "b92839f0757dff59e1ef7d70958f76c3",
     "semantic_hash": ""
   },
   "electron/main.ts": {
-    "mtime": 1779059999.870979,
-    "ast_hash": "2ce7ddd0ba4a12bfb0cacc8ac8275d4d",
+    "mtime": 1793982886.4497316,
+    "ast_hash": "1c9bbc7dc2ecf4e7ca14d99e8bcabcd6",
     "semantic_hash": ""
   },
   "electron/preload.ts": {
-    "mtime": 1779059945.1494534,
-    "ast_hash": "3c261cf641c181aba7f9b853137af67e",
+    "mtime": 1793982257.8083298,
+    "ast_hash": "3e837c3129cee2bb93095304acc3130a",
     "semantic_hash": ""
   },
   "electron/tsconfig.json": {
-    "mtime": 1775923225.6577387,
-    "ast_hash": "1840b914dcb54da600b00bf6f27c39f2",
+    "mtime": 1793977468.1676922,
+    "ast_hash": "6f6b27f4b2d572ba95a3851ebe9f2997",
     "semantic_hash": ""
   },
   "eslint.config.mjs": {
-    "mtime": 1775922635.782632,
-    "ast_hash": "ed2671870d3ef42e0be1ca2544ba97aa",
+    "mtime": 1793982266.6029308,
+    "ast_hash": "1637c67cf168ae10bb4672ee5eba8c20",
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1775949747.423692,
-    "ast_hash": "41ff0a4cbc0b49915280b875edeb991b",
+    "mtime": 1793982710.8841593,
+    "ast_hash": "e410153fcfdd545d377338f48a997fc6",
     "semantic_hash": ""
   },
   "packaging/linux/after-install.sh": {
-    "mtime": 1775924877.7645767,
+    "mtime": 1793984782.109861,
     "ast_hash": "b1cc86d39bceca77ac7e4b6308ec45a4",
     "semantic_hash": ""
   },
   "packaging/linux/after-remove.sh": {
-    "mtime": 1775924619.0054688,
+    "mtime": 1793984782.1108599,
     "ast_hash": "f891f57ff7d703fc136e931c18d97ab9",
     "semantic_hash": ""
   },
   "scripts/generate-icons.py": {
-    "mtime": 1775924619.0054688,
+    "mtime": 1793984782.1119647,
     "ast_hash": "d52e874af0e1e11ed32b55988c4c47cc",
     "semantic_hash": ""
   },
   "scripts/governance-preflight.sh": {
-    "mtime": 1775922047.8263795,
+    "mtime": 1793984782.113215,
     "ast_hash": "aafeda31c931b7293428c3e31a6c3e5f",
     "semantic_hash": ""
   },
   "scripts/install-desktop-entry.sh": {
-    "mtime": 1776609863.184935,
+    "mtime": 1793984782.1155486,
     "ast_hash": "783a20b69dccb2e51ba9467adc0197e8",
     "semantic_hash": ""
   },
   "shared/contracts.ts": {
-    "mtime": 1779059928.0852895,
-    "ast_hash": "3cd4f4d0a3ed87c79b065e77e6539c94",
+    "mtime": 1793977468.2350066,
+    "ast_hash": "74939d13adf6c4d738a1686ba5101034",
     "semantic_hash": ""
   },
   "src/App.tsx": {
-    "mtime": 1779059996.4799466,
-    "ast_hash": "c4cf0bf0c0c5c3cdd131ee21c27a9f84",
+    "mtime": 1793982334.407661,
+    "ast_hash": "78c9437bcaf3704a5da2b1f601afc8bc",
     "semantic_hash": ""
   },
   "src/electron-api.d.ts": {
-    "mtime": 1779059952.0305195,
-    "ast_hash": "8126664dc170fadbcd5af7cb29b54824",
+    "mtime": 1793982256.3957887,
+    "ast_hash": "b7a22a46c964995e75ee068bf9c45bf9",
     "semantic_hash": ""
   },
   "src/lib/assistant.test.ts": {
-    "mtime": 1779054288.8014753,
-    "ast_hash": "68b1c7a0dfef9c46ad55c0cb6dfa9c43",
+    "mtime": 1793977468.2455657,
+    "ast_hash": "94daeed23cf4071f6006e480bf8515d1",
     "semantic_hash": ""
   },
   "src/lib/assistant.ts": {
-    "mtime": 1779054282.869419,
-    "ast_hash": "c31e6cdbbc639c3a866d2257f2e7e353",
+    "mtime": 1793977468.2480364,
+    "ast_hash": "ed2cf9eae642b686b991ab4e52519f37",
     "semantic_hash": ""
   },
   "src/lib/document.test.ts": {
-    "mtime": 1775939019.9012036,
-    "ast_hash": "3b12ec59bba02d26c2f939a77dce48b2",
+    "mtime": 1793982264.5997028,
+    "ast_hash": "01222c0c37b4f9114fa29413f6f28876",
     "semantic_hash": ""
   },
   "src/lib/document.ts": {
-    "mtime": 1775922906.6774113,
-    "ast_hash": "c39d6c69d646febff438da6d522980e1",
+    "mtime": 1793982260.0077555,
+    "ast_hash": "e405a4224931082721398a67be8f7aab",
     "semantic_hash": ""
   },
   "src/lib/export.ts": {
-    "mtime": 1775922906.6776788,
-    "ast_hash": "5c2311a2a98381f52bbe20afeb0b5597",
+    "mtime": 1793977468.2501059,
+    "ast_hash": "7a6d57c6e48150ec593340a7a723c169",
     "semantic_hash": ""
   },
   "src/lib/templates.ts": {
-    "mtime": 1779059435.7675595,
-    "ast_hash": "0d4eead6f0cabf085ab4efeb8194b6ee",
+    "mtime": 1793977468.2537606,
+    "ast_hash": "59410ff75e7a7bbe1bf315cd1d2fd5c4",
     "semantic_hash": ""
   },
   "src/main.tsx": {
-    "mtime": 1775922906.6774113,
-    "ast_hash": "1d90a444cc0598b9ab6b1baae9de52a8",
+    "mtime": 1793982253.3732643,
+    "ast_hash": "1c219ce6723ed5109a30e02ec74a9706",
     "semantic_hash": ""
   },
   "src/vite-env.d.ts": {
-    "mtime": 1775922906.6771562,
-    "ast_hash": "0352474ba2918efe13895edbc3780d94",
+    "mtime": 1793982376.6119535,
+    "ast_hash": "658e8af20da0308223fca0b909c083f4",
     "semantic_hash": ""
   },
   "tsconfig.json": {
-    "mtime": 1775922635.7821982,
-    "ast_hash": "65d7a2b10119820b8fe6eb87ef67ade8",
+    "mtime": 1793977468.2577775,
+    "ast_hash": "bb55cdd6cb27a4b1c326769a10d967a4",
     "semantic_hash": ""
   },
   "vite.config.ts": {
-    "mtime": 1775922635.7823648,
-    "ast_hash": "723a3043287a50d225681d6754f672ed",
+    "mtime": 1793977468.2577775,
+    "ast_hash": "6464b4f11ad1e2ba8014ddbd29c44f5b",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1779060035.3233197,
-    "ast_hash": "e461c0904acd28a373d0770346ce4cbb",
+    "mtime": 1793983070.0979714,
+    "ast_hash": "75d5ed5f2b2a32d33b1aa86d853b42ad",
     "semantic_hash": ""
   },
   "docs/CHANGELOG.md": {
-    "mtime": 1779060030.786276,
-    "ast_hash": "7454e16febace8263573e6dfa358213f",
+    "mtime": 1793983076.4715176,
+    "ast_hash": "0f8f8eb075a312e3b1544522e2a2e46f",
     "semantic_hash": ""
   },
   "docs/adr-template.md": {
-    "mtime": 1775922047.8234994,
-    "ast_hash": "b83966bf1a963f17223f20f4347bed1d",
+    "mtime": 1793977468.141062,
+    "ast_hash": "11cdab652a4173f60898c78c057dedd6",
     "semantic_hash": ""
   },
   "docs/architecture.md": {
-    "mtime": 1776610492.2217972,
-    "ast_hash": "b408e62be6d003f31ab28401ea43e094",
+    "mtime": 1793982996.4198616,
+    "ast_hash": "692d3041eaa433add0b713d513ae1abd",
     "semantic_hash": ""
   },
   "docs/deployment-guide.md": {
-    "mtime": 1776610552.3923578,
-    "ast_hash": "3a3d2133d2c277042cd24187147cb668",
+    "mtime": 1793982942.326681,
+    "ast_hash": "c95028bdab97b9804a1167240f87f24e",
     "semantic_hash": ""
   },
   "docs/exception-record-template.md": {
-    "mtime": 1775922047.8250299,
-    "ast_hash": "f94e7efef5057ce87e925060e20fb9ce",
+    "mtime": 1793977468.1496797,
+    "ast_hash": "48532809af167fa290c541075e2201f8",
     "semantic_hash": ""
   },
   "docs/manual.md": {
-    "mtime": 1779060026.501235,
-    "ast_hash": "df42334d4406876cd6a632f0c0444200",
+    "mtime": 1793982975.7638512,
+    "ast_hash": "7d3d9f037fa96baf3a3862b2540cb26c",
     "semantic_hash": ""
   },
   "docs/risks/risk-register.md": {
-    "mtime": 1776610578.797604,
-    "ast_hash": "3e2e7bb139e12830f0aaf403def4d8c7",
+    "mtime": 1793983094.174334,
+    "ast_hash": "a91c4e4d359cb6c2f25ed2f38e4987f1",
     "semantic_hash": ""
   },
   "docs/roadmap.md": {
-    "mtime": 1776610537.494219,
-    "ast_hash": "e8092f9e1201b3718bdeaed3ed4e46c0",
+    "mtime": 1793983082.1521592,
+    "ast_hash": "f5fdb4110a3a8f1973fc7d6d83dfe79d",
     "semantic_hash": ""
   },
   "docs/runbook.md": {
-    "mtime": 1779060039.4423594,
-    "ast_hash": "03ad0e502e600e9f22d1dfcb6d825691",
+    "mtime": 1793982961.1061137,
+    "ast_hash": "c32e9b4c005da730363434e42502c783",
     "semantic_hash": ""
   },
   "index.html": {
-    "mtime": 1775922635.7827082,
-    "ast_hash": "4d87cfa26c8ffee805c57e8eff089f4c",
+    "mtime": 1793977468.2123113,
+    "ast_hash": "84f51900ff528ee50b4d0c73424e1c79",
     "semantic_hash": ""
   },
   "project-control.yaml": {
-    "mtime": 1779053705.3139544,
-    "ast_hash": "057a1a450411f5a5f430b1e49a377dea",
+    "mtime": 1793977468.2254102,
+    "ast_hash": "91520c0fc81ff6fefe83f76a229b1bff",
     "semantic_hash": ""
   },
   "assets/mermaid-tool-icon.svg": {
-    "mtime": 1775922635.783226,
-    "ast_hash": "935232c8c143ac3c498000b220091311",
+    "mtime": 1793977468.1337805,
+    "ast_hash": "355a5ebdf2aac3dcfbd3db602e0376eb",
+    "semantic_hash": ""
+  },
+  "scripts/clean-electron-build.mjs": {
+    "mtime": 1793982192.5445561,
+    "ast_hash": "456a2b7bd6f838b00f58fde148f5df3f",
+    "semantic_hash": ""
+  },
+  "scripts/install-desktop.mjs": {
+    "mtime": 1793982200.9454803,
+    "ast_hash": "c1dace1db96fe248aa2d4d00a7af168c",
+    "semantic_hash": ""
+  },
+  "scripts/run-generate-icons.mjs": {
+    "mtime": 1793982198.8930986,
+    "ast_hash": "47c1697411995e0644bdda785d7f85b5",
+    "semantic_hash": ""
+  },
+  "scripts/smoke-test.mjs": {
+    "mtime": 1793984760.5856876,
+    "ast_hash": "30ee6c52ea650d331514bf444a37e423",
+    "semantic_hash": ""
+  },
+  "scripts/start-electron.mjs": {
+    "mtime": 1793982196.0980828,
+    "ast_hash": "87c79354951087a23867860b3fc1f67c",
+    "semantic_hash": ""
+  },
+  "src/lib/monaco-setup.ts": {
+    "mtime": 1793982377.8624208,
+    "ast_hash": "3f9ffed52112fb6c9fe2f8ac07b2ea94",
+    "semantic_hash": ""
+  },
+  "src/lib/preview-navigation.test.ts": {
+    "mtime": 1793982242.935042,
+    "ast_hash": "8284dfa21225b629d0bfc9b3c3e57159",
+    "semantic_hash": ""
+  },
+  "src/lib/preview-navigation.ts": {
+    "mtime": 1793982236.6072352,
+    "ast_hash": "6799fd95b2e56b56470bbbd578293994",
+    "semantic_hash": ""
+  },
+  ".github/workflows/ci.yml": {
+    "mtime": 1793982276.9294178,
+    "ast_hash": "f8dd9bc2a4c7f7433cb4287e27d49e0f",
+    "semantic_hash": ""
+  },
+  "assets/guided-ai-labs-signal-spark.svg": {
+    "mtime": 1793977468.1312695,
+    "ast_hash": "891bd7ccfdc731a8749dc10f3c5e5c87",
+    "semantic_hash": ""
+  },
+  "docs/screenshots/diagram.png": {
+    "mtime": 1793977468.1556432,
+    "ast_hash": "59f585d9843c87d6a481c73198fdd520",
+    "semantic_hash": ""
+  },
+  "docs/screenshots/editor.png": {
+    "mtime": 1793977468.1613178,
+    "ast_hash": "110159d0e5bdac808ff76d98a7bf35fc",
+    "semantic_hash": ""
+  },
+  "docs/screenshots/kanban.png": {
+    "mtime": 1793977468.16278,
+    "ast_hash": "c1e623aab2c162dd91c86dd3b76f2e18",
     "semantic_hash": ""
   }
 }
