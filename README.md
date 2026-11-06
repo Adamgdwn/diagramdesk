@@ -61,6 +61,10 @@ It is built for amateur-friendly local use:
 
 DiagramDesk is free, so its installers aren't signed with a paid certificate. Windows SmartScreen and macOS Gatekeeper warn on first launch, and Windows Smart App Control may block the installer outright. See `docs/deployment-guide.md`.
 
+## Download
+
+Get the installer for your system from the [latest release](https://github.com/Adamgdwn/diagramdesk/releases/latest). To build from source instead, follow the Quick Start below.
+
 ## Quick Start
 
 Requires Node.js 24 or newer. These commands work the same on Windows, macOS, and Linux.

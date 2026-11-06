@@ -1,8 +1,8 @@
 # Change Log
 
-## 0.2.3 - Unreleased
+## 0.2.3 - 2026-11-06
 
-The first Windows and macOS build. Nothing has been published under this number yet, so the items recorded under it in April 2026 are included here.
+The first Windows and macOS build, and the first version published as a GitHub Release. Nothing was published under this number before, so the items recorded under it in April 2026 are included here.
 
 - renamed the app from Mermaid Tool to DiagramDesk, including its app ID, data folders, launchers, installer names, and icon. Older entries below keep the name used at the time
 - fixed PNG export and Copy Image, which lost labels and cropped nearly every diagram; they now match the preview, and the `canvg` dependency is gone

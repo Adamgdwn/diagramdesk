@@ -2,7 +2,7 @@
 
 - Date: 2026-11-06
 - Decision: the owner renamed the product from Mermaid Tool to DiagramDesk, because it offers much more than a plain Mermaid editor, and should stand alone and say clearly what it does
-- Branch: `installers/0.2.3`
+- Branch: `installers/0.2.3`, merged to `main` at `fe4d046` and since deleted
 
 ## What Changed
 
@@ -52,13 +52,15 @@ Nothing outside this repo needs changing:
 
 ## Steps for the Owner
 
-These are visible to others, so they wait for the owner:
+These are visible to others, so they waited for the owner. All five were finished on 2026-11-06:
 
-1. Check DiagramDesk in the Canadian and US trademark databases. Earlier searches covered GitHub, the web, and domains, not trademarks.
-2. Merge this branch to `main`.
-3. Rename the GitHub repo to `Adamgdwn/diagramdesk`. GitHub redirects the old URL, including for existing clones, until something else takes that name.
-4. Update the repo description, and add topics such as `mermaid`, `diagrams`, and `local-ai`, so people searching for Mermaid can still find it.
-5. Rename the local folder `02. Mermaid Tool` when nothing is using it. Claude Code keeps this project's memory under a folder named after the old path, so move or re-save that memory afterwards.
+1. Check DiagramDesk in the Canadian and US trademark databases. Earlier searches covered GitHub, the web, and domains, not trademarks. **Done:** Adam reports no conflict.
+2. Merge this branch to `main`. **Done:** `main` fast-forwarded from `e35ee01` to `fe4d046`, and [CI passed](https://github.com/Adamgdwn/diagramdesk/actions/runs/42298257175).
+3. Rename the GitHub repo to `Adamgdwn/diagramdesk`. GitHub redirects the old URL, including for existing clones, until something else takes that name. **Done.**
+4. Update the repo description, and add topics such as `mermaid`, `diagrams`, and `local-ai`, so people searching for Mermaid can still find it. **Done.**
+5. Rename the local folder `02. Mermaid Tool` when nothing is using it. Claude Code keeps this project's memory under a folder named after the old path, so move or re-save that memory afterwards. **Done:** the folder is now `02. DiagramDesk`, the memory is copied across, and the originals are removed.
+
+Adam also explicitly approved the new D icon, as R-006 asks, and chose to publish [Release v0.2.3](https://github.com/Adamgdwn/diagramdesk/releases/tag/v0.2.3) from `fe4d046` before trying an installer downloaded through a browser. That test is still open, along with the checks on a physical Mac and a real Linux desktop.
 
 ## Steps for Linux
 
@@ -75,7 +77,7 @@ Ask Adam before installing or removing an app. Keep everything under the old fol
    dpkg -s mermaid-tool 2>/dev/null | head -3
    ```
 
-3. **Get the code.** Use `main` if the rename has merged, otherwise `installers/0.2.3`. Then run `npm ci`, `npm run build`, and `npm run test:smoke`.
+3. **Get the code.** Use `main`. Then run `npm ci`, `npm run build`, and `npm run test:smoke`.
 4. **Replace the launcher.** `npm run install:desktop` adds `diagramdesk.desktop` and `diagramdesk.xml`, and removes `mermaid-tool.desktop`, `mermaid-tool-dev.desktop`, and `mermaid-tool.xml`.
 5. **Replace the system package, if there is one.** If step 2 found it, and Adam agrees, run `sudo dpkg -r mermaid-tool`. The new package has a different name, so it won't replace the old one by itself.
 6. **Bring the recovery drafts across, so they appear in the new app.** Copy rather than move, and only with the app closed:
