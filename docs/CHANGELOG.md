@@ -1,7 +1,22 @@
 # Change Log
 
-## Unreleased
+## 0.2.3 - Unreleased
 
+The first Windows and macOS build. Nothing has been published under this number yet, so the items recorded under it in April 2026 are included here.
+
+- added Windows and macOS support: installers for each system, a native macOS menu, per-platform GPU and sandbox settings, and `.mmd` and `.mermaid` file associations
+- made every npm script work on Windows, macOS, and Linux by replacing shell-only commands with Node scripts; `scripts/secret-scan.sh` became `scripts/secret-scan.mjs` and no longer needs ripgrep
+- bundled the Monaco editor into the app, so it no longer downloads from a CDN at runtime and a new install works with no internet
+- fixed `Ctrl+W` and `Cmd+W` closing the whole window instead of the active tab; closing the window is now `Ctrl+Shift+W` or `Cmd+Shift+W`
+- added panning with any mouse button, Mac trackpad gestures, and smooth zoom so trackpads no longer jump straight to maximum zoom
+- stopped the same file opening twice on Windows and macOS when its path arrives with different letter case
+- made files opened from the system wait until a window is ready, so none are lost during launch, and opened a window for them when none is open on macOS
+- upgraded Electron from 41 to 45, because 41 is out of support, and moved Copy Image to the new clipboard API; Electron 44 and later require macOS 13 or newer
+- applied non-breaking `npm audit fix` updates, which cleared the critical `dompurify` advisory
+- removed bundled production dependencies from packaged builds, since Vite already includes them in the renderer
+- added an end-to-end smoke test, `npm run test:smoke`, and a CI workflow covering all three systems
+- added `.gitattributes` so shell scripts keep LF line endings on Windows checkouts
+- recorded a full functionality and tool review in `docs/reviews/2026-11-06-functionality-and-tool-review.md`
 - resolved all 47 npm dependency vulnerabilities (1 critical, 37 high, 9 moderate) by running `npm audit fix`; electron updated to 41.10.7 and all transitive build-tool advisories cleared
 - added three screenshots to the README so visitors can immediately see the editor, live preview, and Kanban v11 diagram support
 - extended diagram type detection to cover all Mermaid v11 diagram types: XY Chart, Packet, Architecture, Treemap, Tree View, Kanban, Venn, Ishikawa, ZenUML, and C4 diagrams
@@ -17,9 +32,6 @@
 - clarified the difference between autosave recovery and user-saved files with a visible file-location panel
 - changed new saves and opens to default to `Documents/Mermaid Tool` instead of the hidden recovery draft folder
 - added a `Show Folder` action for saved diagrams
-
-## 0.2.3 - 2026-04-19
-
 - changed the assistant sidebar so the dialogue collapses upward inside the existing left column while the diagram picker remains visible
 - moved the assistant transcript and prompt composer to the top of the expanded dialogue area
 - simplified the local desktop integration back to one `mermaid-tool.desktop` launcher and refreshed the docs around deployment, recovery, and roadmap ideas

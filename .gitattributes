@@ -1,0 +1,4 @@
+# Shell and Python scripts run on Linux and macOS, including from packages built on Windows.
+# A CRLF checkout would break their shebang lines, so they stay LF on every platform.
+*.sh text eol=lf
+*.py text eol=lf

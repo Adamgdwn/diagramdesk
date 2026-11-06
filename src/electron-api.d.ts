@@ -29,6 +29,7 @@ declare global {
       onCommand(listener: (command: AppCommand) => void): () => void;
       onOpenDocument(listener: (document: DocumentPayload) => void): () => void;
       openDocuments(): Promise<DocumentPayload[]>;
+      platform: string;
       saveDraft(request: DraftPayload): Promise<void>;
       saveDocument(request: SaveDocumentRequest): Promise<SaveResult>;
       saveDocumentAs(request: SaveDocumentRequest): Promise<SaveResult>;

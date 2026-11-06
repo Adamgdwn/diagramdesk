@@ -2,6 +2,8 @@
 
 ## Just Completed
 
+- added Windows and macOS support, with macOS still to be verified on real hardware or in CI
+- bundled the editor so the app works offline, and upgraded to a supported Electron release
 - shipped a tabbed workspace so multiple Mermaid files can stay open at once in a single window
 - added multi-window support for side-by-side editing sessions
 - switched autosave and recovery from one shared session file to per-tab draft files
@@ -13,6 +15,10 @@
 
 ## Now
 
+- fix the priority findings in `docs/reviews/2026-11-06-functionality-and-tool-review.md`, starting with PNG export
+- verify the macOS build through CI, then on a real Mac
+- run the Windows installer on a clean machine
+- publish free installers through GitHub Releases once the critical findings are fixed
 - stabilize the new multi-tab, multi-window, and AI-guided workflow
 - verify reinstall and daily-use behavior for the `0.2.x` packaged app
 - smoke-test the Guided AI Labs branded chrome in local launch and packaged flows
@@ -25,8 +31,7 @@
 - add a side-by-side "AI draft vs current diagram" review step before applying assistant changes
 - let users click a node in the preview to focus the assistant automatically
 - add one-click starter prompts for common cases like org charts, process maps, and system context diagrams
-- improve file associations for Mermaid-specific extensions and launcher metadata
-- add package signing and release checks for distributable artifacts
+- add release checks for distributable artifacts
 - add richer export options such as PDF or clipboard image copy
 - keep future app surfaces aligned with the Guided AI Labs signal-spark brand treatment
 - expand test coverage around tab lifecycle, draft recovery, and multi-window state

@@ -1,7 +1,7 @@
 {
   "name": "mermaid-tool",
   "productName": "Mermaid Tool",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "description": "A Guided AI Labs local desktop Mermaid diagram editor with live preview and export tools.",
   "main": "dist/electron/main.js",
   "author": {
@@ -17,17 +17,20 @@
     "dev": "vite --host 127.0.0.1",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:smoke": "node scripts/smoke-test.mjs",
     "typecheck": "tsc --noEmit",
-    "generate:icons": "python3 scripts/generate-icons.py",
+    "generate:icons": "node scripts/run-generate-icons.mjs",
     "build:renderer": "npm run typecheck && vite build",
-    "build:electron": "rm -rf dist/electron dist/shared && tsc -p electron/tsconfig.json",
+    "build:electron": "node scripts/clean-electron-build.mjs && tsc -p electron/tsconfig.json",
     "build": "npm run build:renderer && npm run build:electron",
-    "start:built": "env -u ELECTRON_RUN_AS_NODE electron --no-sandbox --disable-gpu --disable-gpu-compositing --disable-software-rasterizer --in-process-gpu .",
+    "start:built": "node scripts/start-electron.mjs",
     "start": "npm run build && npm run start:built",
-    "install:desktop": "bash scripts/install-desktop-entry.sh",
+    "install:desktop": "node scripts/install-desktop.mjs",
+    "package:win": "npm run generate:icons && npm run build && electron-builder --win nsis",
+    "package:mac": "npm run generate:icons && npm run build && electron-builder --mac dmg zip",
     "package:linux": "npm run generate:icons && npm run build && electron-builder --linux AppImage deb",
-    "package:dir": "npm run generate:icons && npm run build && electron-builder --linux dir",
-    "secret-scan": "bash scripts/secret-scan.sh"
+    "package:dir": "npm run generate:icons && npm run build && electron-builder --dir",
+    "secret-scan": "node scripts/secret-scan.mjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -43,12 +46,13 @@
     "@types/react": "^19.2.3",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "electron": "^41.2.0",
+    "electron": "^45.2.3",
     "electron-builder": "^26.8.1",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.4.0",
+    "playwright-core": "^1.65.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.2",
     "vite": "^8.0.8",
@@ -64,29 +68,69 @@
     },
     "files": [
       "dist/**/*",
-      "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": "packaging/linux/mime",
-        "to": "mime"
-      }
+      "package.json",
+      "!node_modules/**/*"
     ],
     "fileAssociations": [
       {
         "ext": "mmd",
         "name": "Mermaid Diagram",
         "description": "Mermaid diagram source file",
-        "mimeType": "text/x-mermaid"
+        "mimeType": "text/x-mermaid",
+        "role": "Editor"
       },
       {
         "ext": "mermaid",
         "name": "Mermaid Diagram",
         "description": "Mermaid diagram source file",
-        "mimeType": "text/x-mermaid"
+        "mimeType": "text/x-mermaid",
+        "role": "Editor"
       }
     ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "artifactName": "Mermaid-Tool-${version}-win-${arch}-setup.${ext}",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "artifactName": "Mermaid-Tool-${version}-mac-${arch}.${ext}",
+      "category": "public.app-category.graphics-design",
+      "identity": "-",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    },
     "linux": {
+      "extraResources": [
+        {
+          "from": "packaging/linux/mime",
+          "to": "mime"
+        }
+      ],
       "category": "Graphics",
       "desktop": {
         "entry": {

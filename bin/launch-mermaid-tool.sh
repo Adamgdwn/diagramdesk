@@ -89,6 +89,15 @@ if [[ "${needs_rebuild}" == true ]]; then
   fi
 fi
 
+# Electron downloads its binary on first use rather than during npm install.
+if [[ ! -x "${electron_bin}" ]]; then
+  echo "Electron binary is missing. Downloading it before launch." >> "${log_file}" 2>&1
+  if ! ensure_node_tools || ! node -e "require('electron')" >> "${log_file}" 2>&1; then
+    echo "Could not download the Electron binary. See ${log_file} for details." >> "${log_file}" 2>&1
+    exit 1
+  fi
+fi
+
 exec "${electron_bin}" \
   --no-sandbox \
   --disable-gpu \

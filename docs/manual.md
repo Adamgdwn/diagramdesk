@@ -6,28 +6,29 @@ Mermaid Tool is a Guided AI Labs local desktop editor for Mermaid diagram files.
 
 ## How To Work In This Repo
 
-1. Run `bash scripts/governance-preflight.sh`.
+1. Run `bash scripts/governance-preflight.sh`. On Windows, run it from Git Bash.
 2. Review `project-control.yaml`.
 3. Install dependencies with `npm install`.
-4. Use `npm run lint`, `npm run test`, `npm run build`, and `npm run secret-scan` before considering the repo ready.
+4. Use `npm run lint`, `npm run test`, `npm run build`, `npm run test:smoke`, and `npm run secret-scan` before considering the repo ready.
 5. Update the docs when operator expectations, risks, or desktop workflow behavior change.
 
 ## Expected Outputs
 
-- a working local Electron app
+- a working local Electron app on Windows, macOS, and Linux
 - built assets in `dist/`
-- a launcher script in `bin/`
-- a desktop entry installed through `npm run install:desktop`
-- packaged Linux distributables in `release/`
+- installers in `release/`
+- on Linux, a launcher script in `bin/` and a desktop entry installed through `npm run install:desktop`
 - current operator and governance documentation
 
 ## Operator Notes
 
-- `npm run start` builds the renderer and Electron code before launch.
-- `bin/launch-mermaid-tool.sh` is the fastest repeat-launch path after dependencies are installed and now rebuilds automatically when repo source files are newer than the built output.
-- `npm run install:desktop` writes `~/.local/share/applications/mermaid-tool.desktop` so the repo checkout reuses the normal Mermaid Tool desktop ID instead of publishing a second launcher.
-- `npm run package:linux` produces an AppImage and a Debian package for non-source installs.
+- `npm run start` builds the renderer and Electron code before launch, on every system.
+- `npm run package:win`, `npm run package:mac`, and `npm run package:linux` produce installers. Each must run on its own system, or through the manually started CI workflow.
+- On Linux, `bin/launch-mermaid-tool.sh` is the fastest repeat-launch path after dependencies are installed and rebuilds automatically when repo source files are newer than the built output.
+- On Linux, `npm run install:desktop` writes `~/.local/share/applications/mermaid-tool.desktop` so the repo checkout reuses the normal Mermaid Tool desktop ID instead of publishing a second launcher. On other systems it only prints a note.
+- The editor and every other part of the app load from bundled files, so the app makes no internet requests of its own and works offline.
 - The app now supports multiple tabs per window and multiple windows at the same time.
+- `Ctrl+W` or `Cmd+W` closes the active tab. `Ctrl+Shift+W` or `Cmd+Shift+W` closes the window.
 - The left rail now includes a collapsible AI builder at the top of the sidebar.
 - The sidebar keeps the same width whether the dialogue is open or closed, and the starter diagram chooser stays visible below it.
 - The main toolbar is grouped by intent: start a diagram, keep work, share a visual, or use less-common maintenance actions.
@@ -48,13 +49,14 @@ Mermaid Tool is a Guided AI Labs local desktop editor for Mermaid diagram files.
 - `Wipe` clears the current editor contents without deleting the file on disk until you save.
 - `Delete File` permanently removes the current saved file from disk and then opens a fresh untitled document.
 - `Full Screen` on the preview panel opens a presentation-style view and supports `Escape` to return.
-- Right-click and drag on the preview to grab the canvas and pan around larger diagrams.
+- Drag the preview with any mouse button to pan around larger diagrams.
 - Fullscreen preview now locks page scrolling so the canvas owns both horizontal and vertical grab-and-pan movement.
-- Scroll directly over the preview canvas to zoom in or out around the cursor position.
+- On Windows and Linux, scroll over the preview canvas to zoom in or out around the cursor position.
+- On a Mac, two-finger scrolling pans the preview. Pinch or Command+scroll to zoom around the cursor position.
 - `Fit Width` is the best default reading mode for large diagrams, while `Whole` shows the entire graph bounds on one screen.
-- Flowcharts now default to a tighter ELK-based layout so complex diagrams waste less space in preview and fullscreen.
+- Flowcharts use tighter spacing so complex diagrams waste less space in preview and fullscreen. The ELK layout engine is requested in settings but isn't installed, so Mermaid's standard layout does the work.
 - Built-in templates are meant as onboarding shortcuts, not authoritative Mermaid examples for every syntax feature.
 - The built-in templates focus on common business diagrams such as client journeys, support handoffs, launch plans, strategy maps, data models, and approval workflows.
 - Export works best after the preview is green and rendering successfully.
 - `Copy Image` places a PNG version of the current preview on the system clipboard for quick sharing in documents and messages.
-- `npm run install:desktop` registers `.mmd` and `.mermaid` locally through the desktop database and MIME database.
+- The Windows and macOS installers register `.mmd` and `.mermaid`. On Linux, `npm run install:desktop` registers them locally through the desktop database and MIME database.

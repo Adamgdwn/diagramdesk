@@ -1,4 +1,15 @@
-import { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, nativeImage, shell } from "electron";
+import {
+  app,
+  BrowserWindow,
+  ClipboardItem,
+  Menu,
+  clipboard,
+  dialog,
+  ipcMain,
+  nativeImage,
+  shell,
+  type MenuItemConstructorOptions
+} from "electron";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
@@ -19,6 +30,8 @@ import {
 } from "./local-models";
 
 const APP_NAME = "Mermaid Tool";
+const APP_ID = "com.adamgoodwin.mermaidtool";
+const IS_MAC = process.platform === "darwin";
 const TEXT_FILE_FILTERS = [
   {
     name: "Mermaid files",
@@ -28,10 +41,21 @@ const TEXT_FILE_FILTERS = [
 const windows = new Map<number, BrowserWindow>();
 const pendingLaunchDocuments = new Map<number, DocumentPayload[]>();
 const queuedLaunchDocuments: DocumentPayload[] = [];
+// A window joins this set once its page has asked for its launch documents, which is also the moment
+// its file listener is attached. Until then documents wait in pendingLaunchDocuments so none are lost.
+const windowsReadyForDocuments = new Set<number>();
 
-app.commandLine.appendSwitch("disable-gpu");
-app.commandLine.appendSwitch("disable-gpu-compositing");
-app.disableHardwareAcceleration();
+// Works around GPU driver problems on Linux desktops. Windows and macOS keep hardware acceleration.
+if (process.platform === "linux") {
+  app.commandLine.appendSwitch("disable-gpu");
+  app.commandLine.appendSwitch("disable-gpu-compositing");
+  app.disableHardwareAcceleration();
+}
+
+// Groups the app's windows under its own taskbar entry instead of the generic Electron one.
+if (process.platform === "win32") {
+  app.setAppUserModelId(APP_ID);
+}
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -87,7 +111,18 @@ function getWindowFromWebContents(webContents: Electron.WebContents): BrowserWin
 }
 
 function sendAppCommand(command: AppCommand): void {
-  getTargetWindow()?.webContents.send("app:command", command);
+  const targetWindow = getTargetWindow();
+  if (targetWindow) {
+    targetWindow.webContents.send("app:command", command);
+    return;
+  }
+
+  // macOS keeps the app and its menu alive with no windows open, so a command needs a window to land in.
+  void createWindow().then((createdWindow) => {
+    if (command !== "new") {
+      createdWindow.webContents.send("app:command", command);
+    }
+  });
 }
 
 function getDraftFilePath(draftId: string): string {
@@ -166,7 +201,8 @@ async function clearDraft(draftId: string): Promise<void> {
 }
 
 function buildMenu(): void {
-  const menu = Menu.buildFromTemplate([
+  const template: MenuItemConstructorOptions[] = [
+    ...(IS_MAC ? [{ role: "appMenu" as const }] : []),
     {
       label: "File",
       submenu: [
@@ -187,15 +223,20 @@ function buildMenu(): void {
         },
         { type: "separator" },
         { accelerator: "CmdOrCtrl+W", click: () => sendAppCommand("closeTab"), label: "Close Tab" },
-        { role: "close", label: "Close Window" },
+        { accelerator: "CmdOrCtrl+Shift+W", role: "close", label: "Close Window" },
         { type: "separator" },
         { click: () => sendAppCommand("wipe"), label: "Wipe Editor" },
         { click: () => sendAppCommand("deleteFile"), label: "Delete File" },
         { type: "separator" },
         { click: () => sendAppCommand("exportSvg"), label: "Export SVG..." },
         { click: () => sendAppCommand("exportPng"), label: "Export PNG..." },
-        { type: "separator" },
-        { role: "quit", label: "Quit Mermaid Tool" }
+        // On macOS, Quit lives in the app menu.
+        ...(IS_MAC
+          ? []
+          : [
+              { type: "separator" as const },
+              { role: "quit" as const, label: "Quit Mermaid Tool" }
+            ])
       ]
     },
     {
@@ -222,31 +263,39 @@ function buildMenu(): void {
         { type: "separator" },
         { role: "togglefullscreen" }
       ]
-    }
-  ]);
+    },
+    ...(IS_MAC ? [{ role: "windowMenu" as const }] : [])
+  ];
 
-  Menu.setApplicationMenu(menu);
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+function deliverDocument(targetWindow: BrowserWindow, document: DocumentPayload): void {
+  if (windowsReadyForDocuments.has(targetWindow.id)) {
+    targetWindow.webContents.send("file:opened", document);
+    return;
+  }
+
+  const waiting = pendingLaunchDocuments.get(targetWindow.id) ?? [];
+  pendingLaunchDocuments.set(targetWindow.id, [...waiting, document]);
 }
 
 async function dispatchOpenedDocument(filePath: string, preferredWindow?: BrowserWindow | null): Promise<void> {
   try {
     const document = await readDocument(filePath);
     const targetWindow = preferredWindow ?? getTargetWindow();
-    if (!targetWindow) {
-      queuedLaunchDocuments.push(document);
+    if (targetWindow) {
+      deliverDocument(targetWindow, document);
       return;
     }
 
-    const sendDocument = () => {
-      targetWindow.webContents.send("file:opened", document);
-    };
-
-    if (targetWindow.webContents.isLoadingMainFrame()) {
-      targetWindow.webContents.once("did-finish-load", sendDocument);
+    // macOS sends open-file before the app is ready on launch, and with no windows open afterwards.
+    if (app.isReady()) {
+      await createWindow([document]);
       return;
     }
 
-    sendDocument();
+    queuedLaunchDocuments.push(document);
   } catch (error) {
     dialog.showErrorBox(APP_NAME, `Couldn't open the requested file.\n\n${getErrorMessage(error)}`);
   }
@@ -306,13 +355,14 @@ async function persistAsset(
   };
 }
 
-function copyImageToClipboard(request: CopyImageRequest): void {
+async function copyImageToClipboard(request: CopyImageRequest): Promise<void> {
   const image = nativeImage.createFromDataURL(request.dataUrl);
   if (image.isEmpty()) {
     throw new Error("The preview image could not be copied.");
   }
 
-  clipboard.writeImage(image);
+  const png = new Blob([new Uint8Array(image.toPNG())], { type: "image/png" });
+  await clipboard.write([new ClipboardItem({ "image/png": png })]);
 }
 
 async function deleteTextDocument(filePath: string): Promise<void> {
@@ -334,17 +384,27 @@ async function createWindow(initialDocuments: DocumentPayload[] = []): Promise<B
     }
   });
 
-  windows.set(browserWindow.id, browserWindow);
+  const windowId = browserWindow.id;
+  windows.set(windowId, browserWindow);
+
+  // A reload replaces the page and its listener, so documents wait again until the new page asks.
+  browserWindow.webContents.on("did-start-loading", () => {
+    windowsReadyForDocuments.delete(windowId);
+  });
 
   const startupDocuments = [
     ...queuedLaunchDocuments.splice(0, queuedLaunchDocuments.length),
     ...initialDocuments
   ];
   if (startupDocuments.length > 0) {
-    pendingLaunchDocuments.set(browserWindow.id, startupDocuments);
+    pendingLaunchDocuments.set(windowId, startupDocuments);
   }
 
-  await browserWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
+  browserWindow.on("closed", () => {
+    windows.delete(windowId);
+    pendingLaunchDocuments.delete(windowId);
+    windowsReadyForDocuments.delete(windowId);
+  });
 
   browserWindow.webContents.on("will-prevent-unload", (event) => {
     const choice = dialog.showMessageBoxSync(browserWindow, {
@@ -361,10 +421,7 @@ async function createWindow(initialDocuments: DocumentPayload[] = []): Promise<B
     }
   });
 
-  browserWindow.on("closed", () => {
-    windows.delete(browserWindow.id);
-    pendingLaunchDocuments.delete(browserWindow.id);
-  });
+  await browserWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
 
   return browserWindow;
 }
@@ -444,6 +501,7 @@ ipcMain.handle("file:getLaunchDocuments", (event) => {
   const browserWindow = getWindowFromWebContents(event.sender);
   const launchDocuments = pendingLaunchDocuments.get(browserWindow.id) ?? [];
   pendingLaunchDocuments.delete(browserWindow.id);
+  windowsReadyForDocuments.add(browserWindow.id);
   return launchDocuments;
 });
 
@@ -485,7 +543,7 @@ ipcMain.handle("file:exportAsset", async (_event, request: SaveAssetRequest) => 
 });
 
 ipcMain.handle("clipboard:copyImage", async (_event, request: CopyImageRequest) => {
-  copyImageToClipboard(request);
+  await copyImageToClipboard(request);
 });
 
 ipcMain.handle("draft:getRecovered", async () => {

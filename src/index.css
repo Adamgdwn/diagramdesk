@@ -15,7 +15,7 @@
     linear-gradient(rgba(15, 23, 32, 0.026) 1px, transparent 1px),
     linear-gradient(180deg, #ffffff 0%, #f7fafc 58%, #edf3f6 100%);
   background-size: 3.25rem 3.25rem, 3.25rem 3.25rem, 100% 100%;
-  font-family: "Inter", "Aptos", "Segoe UI Variable", "IBM Plex Sans", "Noto Sans", sans-serif;
+  font-family: "Inter", "Aptos", "Segoe UI Variable", -apple-system, BlinkMacSystemFont, "IBM Plex Sans", "Noto Sans", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

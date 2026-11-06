@@ -12,6 +12,12 @@ technical_lead:
   name: codex session
   role: technical-lead
 status: active
+# Owner decision, 2026-11-06. The build-to-sale lifecycle standard doesn't apply, because this isn't being sold.
+distribution:
+  commercial: false
+  channel: free through GitHub
+  code_signing: none
+  code_signing_notes: Accepted risk R-007. Users get system warnings, and Smart App Control may block the Windows installer.
 environments:
   - dev
   - staging

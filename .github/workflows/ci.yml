@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+  push:
+    # Pushing a branch under installers/ also builds and tests installers, without opening a pull request.
+    branches: [main, "installers/**"]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Build installers for every OS and keep them for 7 days
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: bash scripts/governance-preflight.sh
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run secret-scan
+
+  # Windows and macOS runners are used because both are supported platforms this job proves.
+  # fail-fast is off so a failure on one system still reports the result for the others.
+  smoke:
+    needs: checks
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Smoke test (Linux, virtual display)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgtk-3-0t64 libnss3 libxss1 libasound2t64 libgbm1
+          xvfb-run --auto-servernum npm run test:smoke
+      - name: Smoke test
+        if: runner.os != 'Linux'
+        run: npm run test:smoke
+
+  # Runs only on an installers/ branch or when started by hand, so routine pushes never build or store installers.
+  package:
+    if: (github.event_name == 'workflow_dispatch' && inputs.package) || startsWith(github.ref, 'refs/heads/installers/')
+    needs: smoke
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            script: package:win
+            artifact: windows
+            files: release/*-setup.exe
+          - os: macos-latest
+            script: package:mac
+            artifact: macos
+            files: |
+              release/*.dmg
+              release/*.zip
+          - os: ubuntu-latest
+            script: package:linux
+            artifact: linux
+            files: |
+              release/*.AppImage
+              release/*.deb
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run ${{ matrix.script }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mermaid-tool-${{ matrix.artifact }}-${{ github.sha }}-installers
+          path: ${{ matrix.files }}
+          retention-days: 7
+          if-no-files-found: error
+      # These run the finished installers, then smoke test what they installed.
+      - name: Install and smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $setup = (Get-ChildItem release/*-setup.exe | Select-Object -First 1).FullName
+          $target = Join-Path $env:RUNNER_TEMP "mermaid-tool"
+          Start-Process -Wait -FilePath $setup -ArgumentList "/S", "/D=$target"
+          node scripts/smoke-test.mjs (Join-Path $target "Mermaid Tool.exe")
+      # CI files aren't quarantined, so this doesn't exercise the Gatekeeper prompt a downloaded copy gets.
+      - name: Install and smoke test (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          arch=$([ "$(uname -m)" = "arm64" ] && echo arm64 || echo x64)
+          hdiutil attach release/*-mac-$arch.dmg -mountpoint "$RUNNER_TEMP/dmg" -nobrowse
+          cp -R "$RUNNER_TEMP/dmg/Mermaid Tool.app" "$RUNNER_TEMP/"
+          hdiutil detach "$RUNNER_TEMP/dmg"
+          node scripts/smoke-test.mjs "$RUNNER_TEMP/Mermaid Tool.app/Contents/MacOS/Mermaid Tool"
+      - name: Install and smoke test (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          sudo apt-get install -y ./release/*.deb
+          xvfb-run --auto-servernum node scripts/smoke-test.mjs "/opt/Mermaid Tool/mermaid-tool"
+          chmod +x release/*.AppImage
+          APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run --auto-servernum node scripts/smoke-test.mjs release/*.AppImage

@@ -32,9 +32,11 @@ import {
   countLines,
   detectDiagramType,
   ensureMermaidExtension,
-  getFileNameFromPath
+  getFileNameFromPath,
+  isSameDocumentPath
 } from "./lib/document";
 import { renderSvgToPngDataUrl } from "./lib/export";
+import { resolveWheelGesture } from "./lib/preview-navigation";
 import { TEMPLATE_LIBRARY } from "./lib/templates";
 
 const THEME_OPTIONS: MermaidThemeName[] = ["default", "neutral", "forest", "dark", "base"];
@@ -123,7 +125,8 @@ function formatClockTime(timestamp: string): string {
 }
 
 function clampZoom(candidateZoom: number): number {
-  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number(candidateZoom.toFixed(2))));
+  // Four decimals, so the tiny steps from a trackpad add up instead of rounding back to no change.
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number(candidateZoom.toFixed(4))));
 }
 
 function getSvgSize(svgMarkup: string): SvgSize | null {
@@ -452,7 +455,9 @@ function App() {
     const lastDocumentName = documents[documents.length - 1]?.name ?? "document";
 
     for (const document of documents) {
-      const existingTab = nextTabs.find((tab) => tab.documentPath === document.path);
+      const existingTab = nextTabs.find((tab) => (
+        isSameDocumentPath(tab.documentPath, document.path, window.mermaidTool.platform)
+      ));
       if (existingTab) {
         nextActiveTabId = existingTab.id;
         reusedCount += 1;
@@ -500,7 +505,7 @@ function App() {
             startOnLoad: false,
             theme: activeTab.theme,
             securityLevel: "strict",
-            fontFamily: "IBM Plex Sans, Segoe UI Variable, Segoe UI, sans-serif",
+            fontFamily: "IBM Plex Sans, Segoe UI Variable, Segoe UI, -apple-system, BlinkMacSystemFont, sans-serif",
             flowchart: FLOWCHART_LAYOUT,
             sequence: {
               useMaxWidth: false
@@ -960,12 +965,18 @@ function App() {
 
     event.preventDefault();
 
+    const gesture = resolveWheelGesture(event, window.mermaidTool.platform);
+    if (gesture.kind === "pan") {
+      setPanX((currentPanX) => currentPanX - gesture.deltaX);
+      setPanY((currentPanY) => currentPanY - gesture.deltaY);
+      return;
+    }
+
     const canvas = event.currentTarget as HTMLDivElement;
     const rect = canvas.getBoundingClientRect();
     const cursorX = event.clientX - rect.left;
     const cursorY = event.clientY - rect.top;
-    const zoomFactor = event.deltaY < 0 ? 1.12 : 0.88;
-    const nextZoom = clampZoom(zoom * zoomFactor);
+    const nextZoom = clampZoom(zoom * gesture.factor);
 
     if (nextZoom === zoom) {
       return;
@@ -996,10 +1007,7 @@ function App() {
   }, [isPreviewFullscreen]);
 
   function handlePreviewMouseDown(event: ReactMouseEvent<HTMLDivElement>): void {
-    if (event.button !== 2) {
-      return;
-    }
-
+    // Any button pans, because trackpad-only laptops have no comfortable right-button drag.
     event.preventDefault();
     previewPanSessionRef.current = {
       originClientX: event.clientX,
@@ -1008,7 +1016,7 @@ function App() {
       originPanY: panY
     };
     setIsPanningPreview(true);
-    setStatusMessage("Right-drag the canvas to pan around the diagram.");
+    setStatusMessage("Drag the canvas to pan around the diagram.");
   }
 
   function handlePreviewContextMenu(event: ReactMouseEvent<HTMLDivElement>): void {

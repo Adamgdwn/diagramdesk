@@ -6,10 +6,19 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist", "node_modules"]
+    ignores: ["build", "dist", "node_modules", "release"]
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node
+      }
+    }
+  },
   {
     files: ["src/**/*.{ts,tsx}", "electron/**/*.ts", "shared/**/*.ts", "vite.config.ts"],
     languageOptions: {

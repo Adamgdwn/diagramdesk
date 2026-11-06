@@ -14,6 +14,7 @@ import type {
 } from "../shared/contracts";
 
 contextBridge.exposeInMainWorld("mermaidTool", {
+  platform: process.platform,
   createWindow(): Promise<void> {
     return ipcRenderer.invoke("window:new");
   },

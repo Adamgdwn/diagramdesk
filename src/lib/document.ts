@@ -14,6 +14,20 @@ export function getFileNameFromPath(filePath: string): string {
   return parts[parts.length - 1] ?? filePath;
 }
 
+// Windows and default macOS volumes ignore letter case, so the same file can arrive spelled two ways.
+export function isSameDocumentPath(left: string | undefined, right: string | undefined, platform: string): boolean {
+  if (!left || !right) {
+    return false;
+  }
+
+  if (platform === "win32" || platform === "darwin") {
+    const normalize = (filePath: string) => filePath.replace(/\\/g, "/").toLowerCase();
+    return normalize(left) === normalize(right);
+  }
+
+  return left === right;
+}
+
 export function buildExportFileName(filePath: string | undefined, format: "png" | "svg"): string {
   const documentName = filePath ? getFileNameFromPath(filePath) : DEFAULT_DOCUMENT_NAME;
   const stem = documentName.replace(/\.[^.]+$/, "");
