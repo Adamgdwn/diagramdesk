@@ -8,6 +8,8 @@ import type {
   CopyImageRequest,
   DraftPayload,
   DocumentPayload,
+  OpenDocumentsResult,
+  RecoveredDrafts,
   SaveAssetRequest,
   SaveDocumentRequest,
   SaveResult
@@ -30,10 +32,10 @@ contextBridge.exposeInMainWorld("mermaidTool", {
   getLaunchDocuments(): Promise<DocumentPayload[]> {
     return ipcRenderer.invoke("file:getLaunchDocuments");
   },
-  getRecoveredDrafts(): Promise<DraftPayload[]> {
+  getRecoveredDrafts(): Promise<RecoveredDrafts> {
     return ipcRenderer.invoke("draft:getRecovered");
   },
-  openDocuments(): Promise<DocumentPayload[]> {
+  openDocuments(): Promise<OpenDocumentsResult> {
     return ipcRenderer.invoke("file:open");
   },
   deleteDocument(documentPath: string): Promise<void> {

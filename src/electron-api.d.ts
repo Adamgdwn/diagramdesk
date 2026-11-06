@@ -7,6 +7,8 @@ import type {
   CopyImageRequest,
   DraftPayload,
   DocumentPayload,
+  OpenDocumentsResult,
+  RecoveredDrafts,
   SaveAssetRequest,
   SaveDocumentRequest,
   SaveResult
@@ -24,11 +26,11 @@ declare global {
       getAssistantRuntimeState(): Promise<AssistantRuntimeState>;
       getAppVersion(): Promise<string>;
       getLaunchDocuments(): Promise<DocumentPayload[]>;
-      getRecoveredDrafts(): Promise<DraftPayload[]>;
+      getRecoveredDrafts(): Promise<RecoveredDrafts>;
       getStorageInfo(): Promise<AppStorageInfo>;
       onCommand(listener: (command: AppCommand) => void): () => void;
       onOpenDocument(listener: (document: DocumentPayload) => void): () => void;
-      openDocuments(): Promise<DocumentPayload[]>;
+      openDocuments(): Promise<OpenDocumentsResult>;
       platform: string;
       saveDraft(request: DraftPayload): Promise<void>;
       saveDocument(request: SaveDocumentRequest): Promise<SaveResult>;

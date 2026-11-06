@@ -29,7 +29,7 @@
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
+  height: 100vh;
 }
 
 html.preview-fullscreen-active,
@@ -43,14 +43,16 @@ select {
 }
 
 #root {
-  min-height: 100vh;
+  height: 100%;
 }
 
 .shell {
   position: relative;
   isolation: isolate;
-  min-height: 100vh;
-  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1rem 1.25rem 0.75rem;
   overflow: hidden;
 }
 
@@ -91,6 +93,12 @@ select {
   z-index: 1;
 }
 
+.topbar,
+.tabbar,
+.statusbar {
+  flex: 0 0 auto;
+}
+
 .topbar {
   display: grid;
   grid-template-areas:
@@ -99,7 +107,7 @@ select {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.8rem 1rem;
   align-items: center;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.75rem;
 }
 
 .brand {
@@ -214,7 +222,7 @@ select {
 }
 
 .tabbar {
-  margin-bottom: 1rem;
+  margin-bottom: 0.65rem;
 }
 
 .tabstrip {
@@ -376,13 +384,17 @@ select {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(18rem, 22rem) minmax(26rem, 1.1fr) minmax(24rem, 1fr);
+  flex: 1 1 auto;
+  grid-template-columns: minmax(16rem, 22rem) minmax(20rem, 1.1fr) minmax(20rem, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 1rem;
+  min-height: 0;
 }
 
 .panel {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   min-height: 0;
   border-radius: 0.75rem;
   background: rgba(255, 255, 255, 0.88);
@@ -396,6 +408,11 @@ select {
   padding: 1.2rem;
   gap: 1rem;
   overflow-y: auto;
+}
+
+/* The sidebar scrolls as a whole, so its sections keep their full height instead of being squeezed. */
+.sidebar > * {
+  flex-shrink: 0;
 }
 
 .sidebar-section h2 {
@@ -738,17 +755,24 @@ select {
 
 .panel-header {
   display: flex;
+  flex-shrink: 0;
   justify-content: space-between;
   gap: 1rem;
   align-items: flex-start;
-  margin-bottom: 0.95rem;
+  margin-bottom: 0.75rem;
 }
 
 .preview-header-actions,
 .preview-focus-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
+}
+
+.preview-header-actions .button {
+  padding: 0.5rem 0.75rem;
 }
 
 .panel-badge {
@@ -769,12 +793,13 @@ select {
 }
 
 .file-location {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.9rem;
-  align-items: start;
-  margin: -0.2rem 0 0.95rem;
-  padding: 0.85rem;
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  align-items: center;
+  margin: -0.2rem 0 0.75rem;
+  padding: 0.6rem 0.75rem;
   border-radius: 0.6rem;
   background: rgba(255, 255, 255, 0.78);
   box-shadow: inset 0 0 0 1px rgba(216, 227, 234, 0.95);
@@ -782,7 +807,9 @@ select {
 
 .file-location-copy {
   display: grid;
-  gap: 0.25rem;
+  flex: 1 1 14rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.2rem;
   min-width: 0;
 }
 
@@ -805,6 +832,7 @@ select {
   color: var(--brand-muted);
   font-size: 0.85rem;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .file-location-actions {
@@ -815,7 +843,7 @@ select {
 }
 
 .file-location-actions .button {
-  padding: 0.65rem 0.9rem;
+  padding: 0.5rem 0.75rem;
 }
 
 .editor-shell,
@@ -828,10 +856,6 @@ select {
   box-shadow: inset 0 0 0 1px rgba(216, 227, 234, 0.95);
 }
 
-.editor-shell {
-  min-height: 38rem;
-}
-
 .preview-shell {
   display: flex;
 }
@@ -840,7 +864,7 @@ select {
   position: relative;
   flex: 1;
   min-width: 0;
-  min-height: 38rem;
+  min-height: 0;
   overflow: hidden;
   cursor: grab;
   overscroll-behavior: contain;
@@ -897,8 +921,9 @@ select {
   display: grid;
   place-items: center;
   flex: 1;
-  min-height: 38rem;
+  min-height: 0;
   padding: 2rem;
+  overflow-y: auto;
   text-align: center;
   color: var(--brand-muted);
 }
@@ -982,10 +1007,10 @@ select {
 .statusbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem 1.5rem;
-  padding: 1rem 0.25rem 0;
+  gap: 0.25rem 1.5rem;
+  padding: 0.6rem 0.25rem 0;
   color: var(--brand-muted);
-  font-size: 0.92rem;
+  font-size: 0.85rem;
 }
 
 .statusbar-alert {
@@ -993,7 +1018,153 @@ select {
   font-weight: 700;
 }
 
-@media (max-width: 1280px) {
+/* Most laptop screens. Trims the header and tabs so the editor and preview keep the height. */
+@media (max-height: 860px) {
+  .shell {
+    padding-block: 0.6rem 0.5rem;
+  }
+
+  .topbar {
+    gap: 0.4rem 1rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .brand-mark {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 0.8rem;
+    font-size: 1.1rem;
+  }
+
+  .brand h1 {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+
+  .brand .eyebrow,
+  .brand-subtitle,
+  .file-location-copy p {
+    display: none;
+  }
+
+  .guided-labs-lockup {
+    width: 8.5rem;
+    height: 2.4rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  .toolbar-right .field {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .toolbar-right .field select {
+    padding: 0.4rem 0.6rem;
+  }
+
+  .toolbar-segment {
+    padding: 0.2rem;
+  }
+
+  .button {
+    padding: 0.45rem 0.8rem;
+  }
+
+  .tabbar {
+    margin-bottom: 0.4rem;
+  }
+
+  .tabstrip {
+    padding: 0.1rem 0 0.2rem;
+  }
+
+  .tabchip-main {
+    padding: 0.35rem 2.25rem 0.35rem 0.8rem;
+  }
+
+  .tabchip-close {
+    top: 0.3rem;
+    right: 0.3rem;
+  }
+
+  .tabchip-add {
+    padding: 0.35rem 0.8rem;
+  }
+
+  .sidebar {
+    padding: 0.8rem;
+    gap: 0.75rem;
+  }
+
+  .editor-panel,
+  .preview-panel {
+    padding: 0.7rem;
+  }
+
+  .panel-header {
+    margin-bottom: 0.5rem;
+  }
+
+  .panel-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+
+  .file-location {
+    margin: 0 0 0.5rem;
+    padding: 0.4rem 0.6rem;
+  }
+
+  .statusbar {
+    padding-top: 0.35rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Narrow windows. Keeps the toolbar and the file panel from wrapping onto extra rows. */
+@media (max-width: 1200px) {
+  .toolbar-label {
+    display: none;
+  }
+
+  .toolbar-main {
+    gap: 0.4rem;
+  }
+
+  .toolbar-main .button {
+    padding: 0.45rem 0.65rem;
+  }
+
+  .workspace {
+    gap: 0.6rem;
+  }
+
+  .file-location-copy {
+    flex-basis: 6rem;
+  }
+
+  .file-location-actions {
+    flex-wrap: nowrap;
+  }
+
+  .file-location-actions .button {
+    padding: 0.4rem 0.55rem;
+    white-space: nowrap;
+  }
+}
+
+/* Reached only through a large app zoom, since the window can't get this narrow. The page scrolls here. */
+@media (max-width: 1000px) {
+  body {
+    height: auto;
+  }
+
+  .shell {
+    height: auto;
+    min-height: 100vh;
+  }
+
   .topbar {
     grid-template-areas:
       "brand"
@@ -1003,7 +1174,13 @@ select {
   }
 
   .workspace {
+    flex: none;
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .sidebar {
+    overflow-y: visible;
   }
 
   .editor-shell,

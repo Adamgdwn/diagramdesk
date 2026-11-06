@@ -20,10 +20,12 @@ import type {
   CopyImageRequest,
   DraftPayload,
   DocumentPayload,
+  OpenDocumentsResult,
   SaveAssetRequest,
   SaveDocumentRequest,
   SaveResult
 } from "../shared/contracts";
+import { clearDraft, readDrafts, writeDraft } from "./draft-store";
 import {
   generateAssistantReply,
   getAssistantRuntimeState
@@ -125,10 +127,6 @@ function sendAppCommand(command: AppCommand): void {
   });
 }
 
-function getDraftFilePath(draftId: string): string {
-  return path.join(app.getPath("userData"), "drafts", `${draftId}.json`);
-}
-
 function getDraftDirectoryPath(): string {
   return path.join(app.getPath("userData"), "drafts");
 }
@@ -152,52 +150,23 @@ function getAppStorageInfo(): AppStorageInfo {
   };
 }
 
-async function readDrafts(): Promise<DraftPayload[]> {
-  try {
-    const draftDirectoryPath = getDraftDirectoryPath();
-    const draftFiles = (await fsp.readdir(draftDirectoryPath))
-      .filter((entryName) => entryName.endsWith(".json"))
-      .sort();
+// One unreadable file shouldn't stop the others from opening, so each one reports its own result.
+async function readSelectedDocuments(filePaths: string[]): Promise<OpenDocumentsResult> {
+  const results = await Promise.allSettled(filePaths.map((filePath) => readDocument(filePath)));
+  const opened: OpenDocumentsResult = { documents: [], failures: [] };
 
-    const drafts = await Promise.all(draftFiles.map(async (entryName) => {
-      const draftPath = path.join(draftDirectoryPath, entryName);
-      const rawDraft = await fsp.readFile(draftPath, "utf8");
-      const parsedDraft = JSON.parse(rawDraft) as Partial<DraftPayload>;
-
-      return {
-        content: parsedDraft.content ?? "",
-        draftId: parsedDraft.draftId ?? path.basename(entryName, ".json"),
-        documentName: parsedDraft.documentName ?? "recovered-draft.mmd",
-        documentPath: parsedDraft.documentPath,
-        theme: parsedDraft.theme ?? "default",
-        updatedAt: parsedDraft.updatedAt ?? new Date().toISOString()
-      } satisfies DraftPayload;
-    }));
-
-    return drafts.sort((leftDraft, rightDraft) => rightDraft.updatedAt.localeCompare(leftDraft.updatedAt));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return [];
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled") {
+      opened.documents.push(result.value);
+    } else {
+      opened.failures.push({
+        message: getErrorMessage(result.reason),
+        name: path.basename(filePaths[index])
+      });
     }
+  });
 
-    throw error;
-  }
-}
-
-async function writeDraft(draft: DraftPayload): Promise<void> {
-  const draftPath = getDraftFilePath(draft.draftId);
-  await fsp.mkdir(path.dirname(draftPath), { recursive: true });
-  await fsp.writeFile(draftPath, JSON.stringify(draft, null, 2), "utf8");
-}
-
-async function clearDraft(draftId: string): Promise<void> {
-  try {
-    await fsp.unlink(getDraftFilePath(draftId));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw error;
-    }
-  }
+  return opened;
 }
 
 function buildMenu(): void {
@@ -373,8 +342,8 @@ async function createWindow(initialDocuments: DocumentPayload[] = []): Promise<B
   const browserWindow = new BrowserWindow({
     width: 1600,
     height: 980,
-    minWidth: 1160,
-    minHeight: 760,
+    minWidth: 1024,
+    minHeight: 640,
     backgroundColor: "#f7fafc",
     title: APP_NAME,
     webPreferences: {
@@ -516,10 +485,10 @@ ipcMain.handle("file:open", async (event) => {
   });
 
   if (canceled || filePaths.length === 0) {
-    return [];
+    return { documents: [], failures: [] };
   }
 
-  return Promise.all(filePaths.map((filePath) => readDocument(filePath)));
+  return readSelectedDocuments(filePaths);
 });
 
 ipcMain.handle("file:delete", async (_event, filePath: string) => {
@@ -547,13 +516,13 @@ ipcMain.handle("clipboard:copyImage", async (_event, request: CopyImageRequest) 
 });
 
 ipcMain.handle("draft:getRecovered", async () => {
-  return readDrafts();
+  return readDrafts(getDraftDirectoryPath());
 });
 
 ipcMain.handle("draft:save", async (_event, draft: DraftPayload) => {
-  await writeDraft(draft);
+  await writeDraft(getDraftDirectoryPath(), draft);
 });
 
 ipcMain.handle("draft:clear", async (_event, draftId: string) => {
-  await clearDraft(draftId);
+  await clearDraft(getDraftDirectoryPath(), draftId);
 });

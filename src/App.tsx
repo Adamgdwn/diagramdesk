@@ -1,4 +1,4 @@
-import Editor from "@monaco-editor/react";
+import Editor, { type EditorProps, type Monaco, type OnMount } from "@monaco-editor/react";
 import mermaid from "mermaid";
 import {
   useDeferredValue,
@@ -18,7 +18,8 @@ import type {
   AppCommand,
   DocumentPayload,
   DraftPayload,
-  MermaidThemeName
+  MermaidThemeName,
+  SaveResult
 } from "../shared/contracts";
 import {
   buildAssistantPlaceholder,
@@ -35,7 +36,8 @@ import {
   getFileNameFromPath,
   isSameDocumentPath
 } from "./lib/document";
-import { renderSvgToPngDataUrl } from "./lib/export";
+import { getSvgSize, renderSvgToPng, type PngExport, type SvgSize } from "./lib/export";
+import { describeFileError } from "./lib/file-errors";
 import { resolveWheelGesture } from "./lib/preview-navigation";
 import { TEMPLATE_LIBRARY } from "./lib/templates";
 
@@ -54,6 +56,25 @@ const FLOWCHART_LAYOUT = {
   useMaxWidth: false,
   wrappingWidth: 200
 };
+const MIN_RENDER_DELAY_MS = 180;
+const MAX_RENDER_DELAY_MS = 2500;
+const AUTOSAVE_DELAY_MS = 900;
+// Suggestions are off because the only source is words already in the file, and the popup took
+// the Enter key, so typing "flowchart TD" then Enter completed the word instead of starting a line.
+const EDITOR_OPTIONS: EditorProps["options"] = {
+  acceptSuggestionOnEnter: "off",
+  automaticLayout: true,
+  fontFamily: "JetBrains Mono, Cascadia Code, ui-monospace, monospace",
+  fontSize: 15,
+  lineNumbersMinChars: 3,
+  minimap: { enabled: false },
+  padding: { top: 18 },
+  quickSuggestions: false,
+  scrollBeyondLastLine: false,
+  suggestOnTriggerCharacters: false,
+  wordBasedSuggestions: "off",
+  wordWrap: "on"
+};
 const EMPTY_RUNTIME_STATE: AssistantRuntimeState = {
   models: [],
   runtimes: [],
@@ -68,9 +89,9 @@ type PreviewPanSession = {
   originPanY: number;
 };
 
-type SvgSize = {
-  height: number;
-  width: number;
+type UnreadableDrafts = {
+  count: number;
+  directory: string;
 };
 
 type WorkspaceTab = {
@@ -129,40 +150,26 @@ function clampZoom(candidateZoom: number): number {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number(candidateZoom.toFixed(4))));
 }
 
-function getSvgSize(svgMarkup: string): SvgSize | null {
-  if (!svgMarkup) {
-    return null;
-  }
+// A diagram that takes a while to render waits for a longer pause in typing, to keep the editor responsive.
+function getRenderDelay(lastRenderDurationMs: number): number {
+  return Math.min(MAX_RENDER_DELAY_MS, Math.max(MIN_RENDER_DELAY_MS, lastRenderDurationMs * 1.5));
+}
 
-  try {
-    const parsed = new DOMParser().parseFromString(svgMarkup, "image/svg+xml");
-    const svgElement = parsed.querySelector("svg");
-    if (!svgElement) {
-      return null;
-    }
+// Mermaid's dark theme draws light text, which would vanish on the white background the other themes use.
+function getExportBackground(theme: MermaidThemeName): string {
+  return theme === "dark" ? "#1f2020" : "#ffffff";
+}
 
-    const viewBox = svgElement.getAttribute("viewBox");
-    if (viewBox) {
-      const viewBoxParts = viewBox.split(/\s+/).map((value) => Number(value));
-      if (viewBoxParts.length === 4 && viewBoxParts.every((value) => Number.isFinite(value))) {
-        const width = viewBoxParts[2];
-        const height = viewBoxParts[3];
-        if (width > 0 && height > 0) {
-          return { width, height };
-        }
-      }
-    }
+function describeStartup(recoveredCount: number, launchCount: number, unreadable: UnreadableDrafts): string {
+  const opened = [
+    recoveredCount > 0 ? `Recovered ${recoveredCount} draft tab${recoveredCount === 1 ? "" : "s"}.` : "",
+    launchCount > 0 ? `Opened ${launchCount} launch file${launchCount === 1 ? "" : "s"}.` : "",
+    unreadable.count > 0
+      ? `${unreadable.count} recovery draft${unreadable.count === 1 ? "" : "s"} couldn't be read and ${unreadable.count === 1 ? "was" : "were"} left in ${unreadable.directory}.`
+      : ""
+  ];
 
-    const width = Number.parseFloat(svgElement.getAttribute("width") ?? "");
-    const height = Number.parseFloat(svgElement.getAttribute("height") ?? "");
-    if (width > 0 && height > 0) {
-      return { width, height };
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
+  return opened.filter(Boolean).join(" ");
 }
 
 function createWorkspaceTab(overrides: Partial<WorkspaceTab> = {}): WorkspaceTab {
@@ -210,12 +217,9 @@ function createTabFromDraft(draft: DraftPayload): WorkspaceTab {
   });
 }
 
-function getMonacoModelPath(tab: WorkspaceTab): string {
-  if (tab.documentPath) {
-    return tab.documentPath;
-  }
-
-  return `inmemory://${tab.id}/${ensureMermaidExtension(tab.documentName)}`;
+// The address belongs to the tab rather than its file, so saving or renaming keeps the undo history.
+function getMonacoModelPath(tabId: string): string {
+  return `inmemory://${tabId}/diagram.mmd`;
 }
 
 function App() {
@@ -236,6 +240,7 @@ function App() {
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
   const [svgSize, setSvgSize] = useState<SvgSize | null>(null);
+  const [renderedTabId, setRenderedTabId] = useState<string | null>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(true);
   const [assistantInput, setAssistantInput] = useState("");
   const [assistantError, setAssistantError] = useState("");
@@ -248,7 +253,9 @@ function App() {
 
   const tabsRef = useRef(tabs);
   const activeTabIdRef = useRef(activeTabId);
-  const activeTabRef = useRef<WorkspaceTab>(initialTabRef.current);
+  const monacoRef = useRef<Monaco | null>(null);
+  const isPushingToEditorRef = useRef(false);
+  const lastRenderDurationRef = useRef(0);
   const previewPanSessionRef = useRef<PreviewPanSession | null>(null);
   const previewCanvasRef = useRef<HTMLDivElement | null>(null);
   const previewFocusCanvasRef = useRef<HTMLDivElement | null>(null);
@@ -270,6 +277,7 @@ function App() {
     && normalizedAssistantDraft !== normalizeMermaidSource(activeTab.source);
   const isWindowDirty = tabs.some((tab) => tab.dirty);
   const isPreviewBlank = !activeTab.source.trim();
+  const exportBackground = getExportBackground(activeTab.theme);
   const assistantNote = assistantError
     ? assistantError
     : renderError && isActionableRenderError(renderError) && hasAssistantDraft
@@ -309,17 +317,9 @@ function App() {
     });
   });
 
-  useEffect(() => {
-    tabsRef.current = tabs;
-  }, [tabs]);
-
-  useEffect(() => {
-    activeTabIdRef.current = activeTabId;
-  }, [activeTabId]);
-
-  useEffect(() => {
-    activeTabRef.current = activeTab;
-  }, [activeTab]);
+  const clearSelectedNode = useEffectEvent((tabId: string) => {
+    updateTab(tabId, (tab) => ({ ...tab, selectedNodeId: undefined }));
+  });
 
   useEffect(() => {
     setAssistantInput("");
@@ -338,7 +338,7 @@ function App() {
 
   useEffect(() => {
     if (!tabs.some((tab) => tab.id === activeTabId) && tabs[0]) {
-      setActiveTabId(tabs[0].id);
+      setWorkspace(tabs, tabs[0].id);
     }
   }, [activeTabId, tabs]);
 
@@ -348,17 +348,12 @@ function App() {
     }
 
     if (!diagramNodes.some((node) => node.id === activeTab.selectedNodeId)) {
-      setTabs((currentTabs) => currentTabs.map((tab) => (
-        tab.id === activeTab.id
-          ? {
-              ...tab,
-              selectedNodeId: undefined
-            }
-          : tab
-      )));
+      clearSelectedNode(activeTab.id);
     }
   }, [activeTab.id, activeTab.selectedNodeId, diagramNodes]);
 
+  // These refs are only written here, so they stay ahead of any render still in progress and
+  // handlers always read what the user has typed so far, not what was last drawn.
   function setWorkspace(nextTabs: WorkspaceTab[], nextActiveTabId: string): void {
     tabsRef.current = nextTabs;
     activeTabIdRef.current = nextActiveTabId;
@@ -369,6 +364,57 @@ function App() {
   function updateTab(tabId: string, updater: (tab: WorkspaceTab) => WorkspaceTab): void {
     const nextTabs = tabsRef.current.map((tab) => (tab.id === tabId ? updater(tab) : tab));
     setWorkspace(nextTabs, activeTabIdRef.current);
+  }
+
+  function getLatestActiveTab(): WorkspaceTab {
+    return tabsRef.current.find((tab) => tab.id === activeTabIdRef.current) ?? tabsRef.current[0];
+  }
+
+  // The editor owns its text while typing. Feeding its own text back through React overwrote
+  // keystrokes made while the app was busy, so only changes made by the app are pushed in.
+  function pushSourceToEditor(tabId: string, source: string): void {
+    const monaco = monacoRef.current;
+    const model = monaco?.editor.getModel(monaco.Uri.parse(getMonacoModelPath(tabId)));
+    if (!model || model.getValue() === source) {
+      return;
+    }
+
+    isPushingToEditorRef.current = true;
+    try {
+      model.pushStackElement();
+      model.pushEditOperations(
+        [],
+        [{ forceMoveMarkers: true, range: model.getFullModelRange(), text: source }],
+        () => null
+      );
+      model.pushStackElement();
+    } finally {
+      isPushingToEditorRef.current = false;
+    }
+  }
+
+  function handleEditorChange(value: string | undefined): void {
+    if (isPushingToEditorRef.current) {
+      return;
+    }
+
+    updateTab(activeTab.id, (currentTab) => ({
+      ...currentTab,
+      assistantDraftSource: undefined,
+      assistantSuggestedTitle: undefined,
+      dirty: true,
+      source: value ?? ""
+    }));
+  }
+
+  const handleEditorMount: OnMount = (_editor, monaco) => {
+    monacoRef.current = monaco;
+  };
+
+  // Failures get a prompt as well as the status bar, which a preview error can hide.
+  function reportFileFailure(message: string): void {
+    setStatusMessage(message);
+    window.alert(message);
   }
 
   async function refreshLocalModels(
@@ -424,10 +470,9 @@ function App() {
         updatedAt
       });
 
-      updateTab(tab.id, (currentTab) => ({
-        ...currentTab,
-        draftSavedAt: formatClockTime(updatedAt)
-      }));
+      updateTab(tab.id, (currentTab) => (
+        currentTab.dirty ? { ...currentTab, draftSavedAt: formatClockTime(updatedAt) } : currentTab
+      ));
     } catch (error) {
       if (options.setStatusOnError ?? true) {
         setStatusMessage(`Autosave failed: ${formatErrorMessage(error)}`);
@@ -435,8 +480,8 @@ function App() {
     }
   }
 
-  const autosaveActiveTab = useEffectEvent((tab: WorkspaceTab) => {
-    void saveDraftForTab(tab);
+  const autosaveActiveTab = useEffectEvent(() => {
+    void saveDraftForTab(getLatestActiveTab());
   });
 
   function appendDocumentsToTabs(
@@ -500,6 +545,7 @@ function App() {
 
     const timeoutId = window.setTimeout(() => {
       void (async () => {
+        const renderStartedAt = performance.now();
         try {
           mermaid.initialize({
             startOnLoad: false,
@@ -521,6 +567,7 @@ function App() {
 
           setSvgMarkup(renderResult.svg);
           setSvgSize(getSvgSize(renderResult.svg));
+          setRenderedTabId(activeTab.id);
           setRenderError("");
         } catch (error) {
           if (!stillCurrent) {
@@ -530,12 +577,13 @@ function App() {
           setSvgSize(null);
           setRenderError(formatErrorMessage(error));
         } finally {
+          lastRenderDurationRef.current = performance.now() - renderStartedAt;
           if (stillCurrent) {
             setIsRendering(false);
           }
         }
       })();
-    }, 180);
+    }, getRenderDelay(lastRenderDurationRef.current));
 
     return () => {
       stillCurrent = false;
@@ -680,7 +728,13 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!svgSize || isPreviewFullscreen || autoFittedTabsRef.current.has(activeTab.id)) {
+    // Until the new tab's own diagram has rendered, the size still belongs to the previous tab.
+    if (
+      !svgSize
+      || renderedTabId !== activeTab.id
+      || isPreviewFullscreen
+      || autoFittedTabsRef.current.has(activeTab.id)
+    ) {
       return;
     }
 
@@ -699,21 +753,30 @@ function App() {
       setPanX((availableWidth - svgSize.width * fittedZoom) / 2);
       setPanY(Math.max(16, (availableHeight - svgSize.height * fittedZoom) / 2));
     });
-  }, [activeTab.id, isPreviewFullscreen, svgSize]);
+  }, [activeTab.id, isPreviewFullscreen, renderedTabId, svgSize]);
 
+  // Lists only what a draft contains. Depending on the whole tab restarted this after every save,
+  // because a save records its time on the tab, so it would write again every second indefinitely.
   useEffect(() => {
     if (!activeTab.dirty) {
       return;
     }
 
     const timeoutId = window.setTimeout(() => {
-      autosaveActiveTab(activeTab);
-    }, 900);
+      autosaveActiveTab();
+    }, AUTOSAVE_DELAY_MS);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [activeTab]);
+  }, [
+    activeTab.dirty,
+    activeTab.documentName,
+    activeTab.documentPath,
+    activeTab.id,
+    activeTab.source,
+    activeTab.theme
+  ]);
 
   useEffect(() => {
     if (!svgSize || !isPreviewFullscreen) {
@@ -771,7 +834,7 @@ function App() {
       return;
     }
 
-    const previousTab = activeTabRef.current;
+    const previousTab = getLatestActiveTab();
     if (previousTab?.dirty) {
       void saveDraftForTab(previousTab, { setStatusOnError: false });
     }
@@ -816,28 +879,41 @@ function App() {
   }
 
   async function handleOpenDocuments(): Promise<void> {
-    const openedDocuments = await window.mermaidTool.openDocuments();
-    if (openedDocuments.length === 0) {
-      return;
-    }
+    try {
+      const { documents, failures } = await window.mermaidTool.openDocuments();
+      appendDocumentsToTabs(documents, "open");
 
-    appendDocumentsToTabs(openedDocuments, "open");
+      if (failures.length > 0) {
+        reportFileFailure(failures
+          .map((failure) => `Couldn't open ${failure.name}: ${describeFileError(failure.message)}.`)
+          .join("\n"));
+      }
+    } catch (error) {
+      reportFileFailure(`Couldn't open the file: ${describeFileError(error)}.`);
+    }
   }
 
   async function handleSaveDocument(forceDialog: boolean): Promise<void> {
-    const activeSnapshot = activeTabRef.current;
+    const activeSnapshot = getLatestActiveTab();
     const suggestedName = ensureMermaidExtension(activeSnapshot.documentName);
-    const saveResult = forceDialog || !activeSnapshot.documentPath
-      ? await window.mermaidTool.saveDocumentAs({
-          content: activeSnapshot.source,
-          path: activeSnapshot.documentPath,
-          suggestedName
-        })
-      : await window.mermaidTool.saveDocument({
-          content: activeSnapshot.source,
-          path: activeSnapshot.documentPath,
-          suggestedName
-        });
+
+    let saveResult: SaveResult;
+    try {
+      saveResult = forceDialog || !activeSnapshot.documentPath
+        ? await window.mermaidTool.saveDocumentAs({
+            content: activeSnapshot.source,
+            path: activeSnapshot.documentPath,
+            suggestedName
+          })
+        : await window.mermaidTool.saveDocument({
+            content: activeSnapshot.source,
+            path: activeSnapshot.documentPath,
+            suggestedName
+          });
+    } catch (error) {
+      reportFileFailure(`Couldn't save ${suggestedName}: ${describeFileError(error)}. Your changes are still here, so try Save As.`);
+      return;
+    }
 
     if (saveResult.canceled || !saveResult.path) {
       return;
@@ -847,7 +923,8 @@ function App() {
 
     updateTab(activeSnapshot.id, (currentTab) => ({
       ...currentTab,
-      dirty: false,
+      // Anything typed while the save was running isn't in the file yet.
+      dirty: currentTab.source !== activeSnapshot.source,
       documentName: getFileNameFromPath(saveResult.path!),
       documentPath: saveResult.path,
       draftSavedAt: undefined,
@@ -858,7 +935,7 @@ function App() {
   }
 
   async function handleShowDocumentInFolder(): Promise<void> {
-    const documentPath = activeTabRef.current.documentPath;
+    const documentPath = getLatestActiveTab().documentPath;
     if (!documentPath) {
       setStatusMessage("This diagram is protected by recovery autosave, but it is not saved to a file yet. Use Save to choose a location.");
       return;
@@ -882,6 +959,7 @@ function App() {
 
     try {
       const suggestedName = buildExportFileName(activeTab.documentPath, format);
+      let png: PngExport | undefined;
 
       const saveResult = format === "svg"
         ? await window.mermaidTool.exportAsset({
@@ -891,17 +969,21 @@ function App() {
             suggestedName
           })
         : await window.mermaidTool.exportAsset({
-            content: (await renderSvgToPngDataUrl(svgMarkup)).split(",")[1] ?? "",
+            content: (png = await renderSvgToPng(svgMarkup, exportBackground)).dataUrl.split(",")[1] ?? "",
             encoding: "base64",
             filters: [{ name: "PNG image", extensions: ["png"] }],
             suggestedName
           });
 
       if (!saveResult.canceled) {
-        setStatusMessage(`Exported ${suggestedName}.`);
+        setStatusMessage(
+          png?.wasReduced
+            ? `Exported ${suggestedName} at reduced detail, because the diagram is very large. SVG keeps full detail.`
+            : `Exported ${suggestedName}.`
+        );
       }
     } catch (error) {
-      setStatusMessage(`Export failed: ${formatErrorMessage(error)}`);
+      setStatusMessage(`Export failed: ${describeFileError(error)}.`);
     } finally {
       setIsExporting(false);
     }
@@ -916,12 +998,15 @@ function App() {
     setIsExporting(true);
 
     try {
-      await window.mermaidTool.copyImage({
-        dataUrl: await renderSvgToPngDataUrl(svgMarkup)
-      });
-      setStatusMessage("Copied the preview image to the clipboard.");
+      const { dataUrl, wasReduced } = await renderSvgToPng(svgMarkup, exportBackground);
+      await window.mermaidTool.copyImage({ dataUrl });
+      setStatusMessage(
+        wasReduced
+          ? "Copied the preview image at reduced detail, because the diagram is very large."
+          : "Copied the preview image to the clipboard."
+      );
     } catch (error) {
-      setStatusMessage(`Copy failed: ${formatErrorMessage(error)}`);
+      setStatusMessage(`Copy failed: ${describeFileError(error)}.`);
     } finally {
       setIsExporting(false);
     }
@@ -1097,6 +1182,7 @@ function App() {
       selectedNodeId: undefined,
       source: BLANK_DOCUMENT_SOURCE
     }));
+    pushSourceToEditor(activeTab.id, BLANK_DOCUMENT_SOURCE);
 
     setStatusMessage(
       activeTab.documentPath
@@ -1129,6 +1215,7 @@ function App() {
           id: activeTab.id
         })
       );
+      pushSourceToEditor(activeTab.id, BLANK_DOCUMENT_SOURCE);
       setStatusMessage(`Deleted ${documentLabel} and reset the tab to a fresh untitled document.`);
     } catch (error) {
       setStatusMessage(`Delete failed: ${formatErrorMessage(error)}`);
@@ -1161,6 +1248,7 @@ function App() {
       selectedNodeId: undefined,
       source: template.source
     });
+    pushSourceToEditor(activeTab.id, template.source);
 
     setIsAssistantOpen(true);
     setAssistantInput("");
@@ -1192,6 +1280,7 @@ function App() {
       draftSavedAt: undefined,
       source: currentTab.assistantDraftSource ?? currentTab.source
     }));
+    pushSourceToEditor(activeTab.id, activeTab.assistantDraftSource);
     setStatusMessage("Applied the AI draft into the editor.");
   }
 
@@ -1354,7 +1443,7 @@ function App() {
 
     void (async () => {
       try {
-        const [version, storage, launchDocuments, recoveredDrafts] = await Promise.all([
+        const [version, storage, launchDocuments, recovery] = await Promise.all([
           window.mermaidTool.getAppVersion(),
           window.mermaidTool.getStorageInfo(),
           window.mermaidTool.getLaunchDocuments(),
@@ -1368,7 +1457,7 @@ function App() {
         setAppVersion(version);
         setStorageInfo(storage);
 
-        const recoveredTabs = recoveredDrafts.map((draft) => createTabFromDraft(draft));
+        const recoveredTabs = recovery.drafts.map((draft) => createTabFromDraft(draft));
         const launchTabs = launchDocuments.map((document) => createTabFromDocument(document));
         const startupTabs = [...recoveredTabs];
 
@@ -1379,23 +1468,22 @@ function App() {
           }
         }
 
-        if (startupTabs.length === 0) {
-          return;
+        if (startupTabs.length > 0) {
+          const lastLaunchTab = launchTabs.at(-1);
+          const nextActiveTab = lastLaunchTab
+            ? startupTabs.find((tab) => tab.documentPath === lastLaunchTab.documentPath) ?? startupTabs[0]
+            : startupTabs[0];
+
+          setWorkspace(startupTabs, nextActiveTab.id);
         }
 
-        const lastLaunchTab = launchTabs.at(-1);
-        const nextActiveTab = lastLaunchTab
-          ? startupTabs.find((tab) => tab.documentPath === lastLaunchTab.documentPath) ?? startupTabs[0]
-          : startupTabs[0];
-
-        setWorkspace(startupTabs, nextActiveTab.id);
-        setStatusMessage(
-          recoveredTabs.length > 0 && launchTabs.length > 0
-            ? `Recovered ${recoveredTabs.length} draft tabs and opened ${launchTabs.length} launch file${launchTabs.length === 1 ? "" : "s"}.`
-            : recoveredTabs.length > 0
-              ? `Recovered ${recoveredTabs.length} draft tab${recoveredTabs.length === 1 ? "" : "s"}.`
-              : `Opened ${launchTabs.length} launch file${launchTabs.length === 1 ? "" : "s"}.`
-        );
+        const startupMessage = describeStartup(recoveredTabs.length, launchTabs.length, {
+          count: recovery.unreadableCount,
+          directory: recovery.unreadableDirectory
+        });
+        if (startupMessage) {
+          setStatusMessage(startupMessage);
+        }
       } catch (error) {
         if (!disposed) {
           setStatusMessage(`Startup recovery failed: ${formatErrorMessage(error)}`);
@@ -1922,30 +2010,14 @@ function App() {
           <div className="editor-shell">
             <Editor
               defaultLanguage="markdown"
+              defaultValue={activeTab.source}
               height="100%"
               language="markdown"
-              onChange={(value) => {
-                updateTab(activeTab.id, (currentTab) => ({
-                  ...currentTab,
-                  assistantDraftSource: undefined,
-                  assistantSuggestedTitle: undefined,
-                  dirty: true,
-                  source: value ?? ""
-                }));
-              }}
-              options={{
-                automaticLayout: true,
-                fontFamily: "JetBrains Mono, Cascadia Code, ui-monospace, monospace",
-                fontSize: 15,
-                lineNumbersMinChars: 3,
-                minimap: { enabled: false },
-                padding: { top: 18 },
-                scrollBeyondLastLine: false,
-                wordWrap: "on"
-              }}
-              path={getMonacoModelPath(activeTab)}
+              onChange={handleEditorChange}
+              onMount={handleEditorMount}
+              options={EDITOR_OPTIONS}
+              path={getMonacoModelPath(activeTab.id)}
               theme="vs"
-              value={activeTab.source}
             />
           </div>
         </section>

@@ -27,6 +27,22 @@ export interface DraftPayload {
   updatedAt: string;
 }
 
+export interface RecoveredDrafts {
+  drafts: DraftPayload[];
+  unreadableCount: number;
+  unreadableDirectory: string;
+}
+
+export interface FileFailure {
+  message: string;
+  name: string;
+}
+
+export interface OpenDocumentsResult {
+  documents: DocumentPayload[];
+  failures: FileFailure[];
+}
+
 export interface SaveDocumentRequest {
   content: string;
   path?: string;
