@@ -96,7 +96,11 @@ type UnreadableDrafts = {
 };
 
 type WorkspaceTab = {
+  // Why the waiting AI draft doesn't render, if it doesn't.
+  assistantDraftProblem?: string;
   assistantDraftSource?: string;
+  // Whether the preview shows the waiting AI draft instead of the editor's text.
+  assistantDraftVisible?: boolean;
   assistantMessages: AssistantChatMessage[];
   assistantSuggestedTitle?: string;
   documentName: string;
@@ -137,6 +141,34 @@ function buildRenderFixPrompt(errorMessage: string): string {
     "Preserve the diagram's intended meaning, labels, layout direction, and existing structure.",
     "If the error is caused by a route or URL-like node label that starts with /, quote the label instead of changing the text."
   ].join("\n");
+}
+
+function buildDraftFixPrompt(errorMessage: string): string {
+  return [
+    "Your updatedSource doesn't render. Mermaid reported:",
+    errorMessage,
+    "",
+    "Return the complete corrected diagram in updatedSource, changing only what's needed to make it valid."
+  ].join("\n");
+}
+
+// Mermaid queues its renders, but not parse, and both reset the same per-diagram state.
+// Everything that uses Mermaid goes through this queue, so the draft check never overlaps the preview.
+let mermaidQueue: Promise<unknown> = Promise.resolve();
+
+function runMermaidTask<T>(task: () => Promise<T>): Promise<T> {
+  const result = mermaidQueue.then(task, task);
+  mermaidQueue = result.catch(() => undefined);
+  return result;
+}
+
+async function findDiagramProblem(source: string): Promise<string> {
+  try {
+    await runMermaidTask(() => mermaid.parse(source));
+    return "";
+  } catch (error) {
+    return formatErrorMessage(error);
+  }
 }
 
 function formatClockTime(timestamp: string): string {
@@ -234,6 +266,9 @@ function App() {
   const [statusMessage, setStatusMessage] = useState("Ready to diagram locally.");
   const [svgMarkup, setSvgMarkup] = useState("");
   const [renderError, setRenderError] = useState("");
+  const [draftRenderError, setDraftRenderError] = useState("");
+  // Which text the current svgMarkup was drawn from, so exports never pick up an unapplied draft.
+  const [renderedKind, setRenderedKind] = useState<"draft" | "source">("source");
   const [isRendering, setIsRendering] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
@@ -277,9 +312,17 @@ function App() {
     && normalizedAssistantDraft !== normalizeMermaidSource(activeTab.source);
   const isWindowDirty = tabs.some((tab) => tab.dirty);
   const isPreviewBlank = !activeTab.source.trim();
+  const isShowingDraft = hasAssistantDraft && Boolean(activeTab.assistantDraftVisible);
+  const draftToPreview = isShowingDraft ? normalizedAssistantDraft : null;
+  const previewDiagramType = draftToPreview === null ? diagramType : detectDiagramType(draftToPreview);
+  const previewError = isShowingDraft ? draftRenderError : renderError;
+  const isPreviewEmpty = draftToPreview === null ? isPreviewBlank : !draftToPreview.trim();
+  const canExportPreview = Boolean(svgMarkup) && !renderError && !isShowingDraft && renderedKind === "source";
   const exportBackground = getExportBackground(activeTab.theme);
   const assistantNote = assistantError
     ? assistantError
+    : hasAssistantDraft && activeTab.assistantDraftProblem
+      ? "The AI draft doesn't render. It's in the preview so you can see why. Discard it, ask again, or apply it and fix it by hand."
     : renderError && isActionableRenderError(renderError) && hasAssistantDraft
       ? "Preview issue detected. Review the AI draft; it may fix the current Mermaid issue."
       : renderError && isActionableRenderError(renderError) && selectedLocalModel
@@ -287,7 +330,7 @@ function App() {
         : renderError && isActionableRenderError(renderError)
           ? "Preview issue detected. Choose a local model, then Suggest Fix, to ask the AI coach for a fix."
           : hasAssistantDraft
-            ? "A fresh AI draft is ready. Review it in the preview, then apply it when you like."
+            ? "A fresh AI draft is in the preview. Apply it to put it in the editor, or discard it."
             : assistantRuntimeState.statusMessage;
   const assistantNoteClassName = [
     "assistant-inline-note",
@@ -384,11 +427,15 @@ function App() {
 
     updateTab(activeTab.id, (currentTab) => ({
       ...currentTab,
+      assistantDraftProblem: undefined,
       assistantDraftSource: undefined,
       assistantSuggestedTitle: undefined,
       dirty: true,
       source: value ?? ""
     }));
+    if (hasAssistantDraft) {
+      setStatusMessage("Your edit replaced the waiting AI draft. Ask again to get a new one.");
+    }
   }
 
   const handleEditorMount: OnMount = (_editor, monaco) => {
@@ -516,10 +563,15 @@ function App() {
   }
 
   useEffect(() => {
-    if (!deferredSource.trim()) {
+    const previewKind = draftToPreview === null ? "source" : "draft";
+    const previewText = draftToPreview ?? deferredSource;
+    const setPreviewError = previewKind === "draft" ? setDraftRenderError : setRenderError;
+
+    if (!previewText.trim()) {
       setSvgMarkup("");
       setSvgSize(null);
-      setRenderError("");
+      setPreviewError("");
+      setRenderedKind(previewKind);
       setIsRendering(false);
       return;
     }
@@ -531,20 +583,21 @@ function App() {
       void (async () => {
         const renderStartedAt = performance.now();
         try {
-          mermaid.initialize({
-            startOnLoad: false,
-            theme: activeTab.theme,
-            securityLevel: "strict",
-            fontFamily: "IBM Plex Sans, Segoe UI Variable, Segoe UI, -apple-system, BlinkMacSystemFont, sans-serif",
-            flowchart: FLOWCHART_LAYOUT,
-            sequence: {
-              useMaxWidth: false
-            }
+          const renderResult = await runMermaidTask(async () => {
+            mermaid.initialize({
+              startOnLoad: false,
+              theme: activeTab.theme,
+              securityLevel: "strict",
+              fontFamily: "IBM Plex Sans, Segoe UI Variable, Segoe UI, -apple-system, BlinkMacSystemFont, sans-serif",
+              flowchart: FLOWCHART_LAYOUT,
+              sequence: {
+                useMaxWidth: false
+              }
+            });
+
+            await mermaid.parse(previewText);
+            return mermaid.render(`diagram-${activeTab.id}`, previewText);
           });
-
-          await mermaid.parse(deferredSource);
-
-          const renderResult = await mermaid.render(`diagram-${activeTab.id}`, deferredSource);
           if (!stillCurrent) {
             return;
           }
@@ -552,14 +605,15 @@ function App() {
           setSvgMarkup(renderResult.svg);
           setSvgSize(getSvgSize(renderResult.svg));
           setRenderedTabId(activeTab.id);
-          setRenderError("");
+          setRenderedKind(previewKind);
+          setPreviewError("");
         } catch (error) {
           if (!stillCurrent) {
             return;
           }
 
           setSvgSize(null);
-          setRenderError(formatErrorMessage(error));
+          setPreviewError(formatErrorMessage(error));
         } finally {
           lastRenderDurationRef.current = performance.now() - renderStartedAt;
           if (stillCurrent) {
@@ -573,7 +627,7 @@ function App() {
       stillCurrent = false;
       window.clearTimeout(timeoutId);
     };
-  }, [activeTab.id, activeTab.theme, deferredSource]);
+  }, [activeTab.id, activeTab.theme, deferredSource, draftToPreview]);
 
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
@@ -898,6 +952,11 @@ function App() {
   }
 
   async function handleExport(format: "png" | "svg"): Promise<void> {
+    if (isShowingDraft || renderedKind !== "source") {
+      setStatusMessage("The preview is showing the AI draft. Apply it, discard it, or choose Show Current, then export.");
+      return;
+    }
+
     if (!svgMarkup || renderError) {
       setStatusMessage("Fix the preview first, then export.");
       return;
@@ -938,6 +997,11 @@ function App() {
   }
 
   async function handleCopyPreviewImage(): Promise<void> {
+    if (isShowingDraft || renderedKind !== "source") {
+      setStatusMessage("The preview is showing the AI draft. Apply it, discard it, or choose Show Current, then copy an image.");
+      return;
+    }
+
     if (!svgMarkup || renderError) {
       setStatusMessage("Fix the preview first, then copy an image.");
       return;
@@ -993,7 +1057,7 @@ function App() {
   }
 
   const handleWheelEvent = useEffectEvent((event: WheelEvent) => {
-    if (renderError || !svgSize) {
+    if (previewError || !svgSize) {
       return;
     }
 
@@ -1067,7 +1131,7 @@ function App() {
   }
 
   async function handlePreviewFullscreenToggle(): Promise<void> {
-    if (!svgMarkup || renderError) {
+    if (!svgMarkup || previewError) {
       setStatusMessage("Let the preview render cleanly before opening full screen.");
       return;
     }
@@ -1218,7 +1282,9 @@ function App() {
 
     updateTab(activeTab.id, (currentTab) => ({
       ...currentTab,
+      assistantDraftProblem: undefined,
       assistantDraftSource: undefined,
+      assistantDraftVisible: false,
       assistantSuggestedTitle: undefined,
       dirty: true,
       documentName: !currentTab.documentPath
@@ -1230,7 +1296,25 @@ function App() {
       source: currentTab.assistantDraftSource ?? currentTab.source
     }));
     pushSourceToEditor(activeTab.id, activeTab.assistantDraftSource);
-    setStatusMessage("Applied the AI draft into the editor.");
+    setStatusMessage("Applied the AI draft into the editor. Undo takes it back out.");
+  }
+
+  function handleDiscardAssistantDraft(): void {
+    updateTab(activeTab.id, (currentTab) => ({
+      ...currentTab,
+      assistantDraftProblem: undefined,
+      assistantDraftSource: undefined,
+      assistantDraftVisible: false,
+      assistantSuggestedTitle: undefined
+    }));
+    setStatusMessage("Discarded the AI draft. Your diagram is unchanged.");
+  }
+
+  function handleToggleDraftPreview(): void {
+    updateTab(activeTab.id, (currentTab) => ({
+      ...currentTab,
+      assistantDraftVisible: !currentTab.assistantDraftVisible
+    }));
   }
 
   async function sendAssistantPrompt(
@@ -1279,8 +1363,8 @@ function App() {
     setIsAssistantBusy(true);
 
     try {
-      const response = await window.diagramDesk.generateAssistantReply({
-        chatHistory: nextHistory,
+      const requestReply = (chatHistory: AssistantChatMessage[]) => window.diagramDesk.generateAssistantReply({
+        chatHistory,
         diagramType: requestDiagramType,
         model: requestModel.modelId,
         runtimeId: requestModel.runtimeId,
@@ -1289,11 +1373,43 @@ function App() {
           : undefined,
         source: requestTab.source
       });
-      const updatedSource = normalizeMermaidSource(response.updatedSource);
+      const currentSource = normalizeMermaidSource(requestTab.source);
+      let response = await requestReply(nextHistory);
+      let updatedSource = normalizeMermaidSource(response.updatedSource);
+      let draftProblem = updatedSource && updatedSource !== currentSource
+        ? await findDiagramProblem(updatedSource)
+        : "";
+
+      if (draftProblem) {
+        // Part of the same request, so the follow-up isn't added to the conversation as a message from the user.
+        setStatusMessage("The AI draft didn't render, so the model is being asked to correct it...");
+        const retry = await requestReply([
+          ...nextHistory,
+          {
+            role: "assistant",
+            content: JSON.stringify({
+              assistantMessage: response.assistantMessage,
+              updatedSource: response.updatedSource
+            })
+          },
+          {
+            role: "user",
+            content: buildDraftFixPrompt(draftProblem)
+          }
+        ]);
+        const retrySource = normalizeMermaidSource(retry.updatedSource);
+        if (retrySource && retrySource !== currentSource) {
+          response = retry;
+          updatedSource = retrySource;
+          draftProblem = await findDiagramProblem(retrySource);
+        }
+      }
 
       updateTab(requestTab.id, (currentTab) => ({
         ...currentTab,
+        assistantDraftProblem: draftProblem || undefined,
         assistantDraftSource: updatedSource,
+        assistantDraftVisible: true,
         assistantMessages: [
           ...nextHistory,
           {
@@ -1305,9 +1421,11 @@ function App() {
       }));
 
       setStatusMessage(
-        updatedSource !== normalizeMermaidSource(requestTab.source)
-          ? `AI drafted an updated ${requestDiagramType.toLowerCase()} for the ${options.statusContext ?? "request"} using ${response.model}.`
-          : `AI reviewed the current ${requestDiagramType.toLowerCase()} and replied with guidance.`
+        updatedSource === currentSource
+          ? `AI reviewed the current ${requestDiagramType.toLowerCase()} and replied with guidance.`
+          : draftProblem
+            ? `The AI draft from ${response.model} doesn't render: ${summarizeRenderError(draftProblem)}`
+            : `AI drafted an updated ${requestDiagramType.toLowerCase()} for the ${options.statusContext ?? "request"} using ${response.model}. It's in the preview to review.`
       );
     } catch (error) {
       const message = stripRemoteErrorPrefix(formatErrorMessage(error));
@@ -1478,8 +1596,37 @@ function App() {
     };
   }, []);
 
+  function renderDraftBanner(): ReactNode {
+    if (!hasAssistantDraft) {
+      return null;
+    }
+
+    return (
+      <div className={`draft-banner ${activeTab.assistantDraftProblem ? "draft-banner-warning" : ""}`} role="status">
+        <p>
+          {activeTab.assistantDraftProblem
+            ? "This AI draft doesn't render. Discard it, ask again, or apply it and fix it by hand."
+            : isShowingDraft
+              ? "Showing the AI draft. Your diagram doesn't change until you apply it."
+              : "An AI draft is waiting. The preview shows your current diagram."}
+        </p>
+        <div className="draft-banner-actions">
+          <button className="button button-primary" onClick={handleApplyAssistantDraft}>
+            Apply
+          </button>
+          <button className="button button-quiet" onClick={handleDiscardAssistantDraft}>
+            Discard
+          </button>
+          <button className="button button-quiet" onClick={handleToggleDraftPreview}>
+            {isShowingDraft ? "Show Current" : "Show Draft"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   function renderPreviewBody(inFocusMode: boolean): ReactNode {
-    if (isPreviewBlank) {
+    if (isPreviewEmpty) {
       return (
         <div className="preview-empty">
           <h3>Ready for a diagram</h3>
@@ -1490,11 +1637,11 @@ function App() {
       );
     }
 
-    if (renderError) {
+    if (previewError) {
       return (
         <div className="preview-empty">
-          <h3>Preview paused</h3>
-          <p className="preview-error-message">{renderError}</p>
+          <h3>{isShowingDraft ? "This AI draft doesn't render" : "Preview paused"}</h3>
+          <p className="preview-error-message">{previewError}</p>
         </div>
       );
     }
@@ -1567,21 +1714,21 @@ function App() {
             <span className="toolbar-label">Share</span>
             <button
               className="button button-quiet"
-              disabled={!svgMarkup || !!renderError || isExporting}
+              disabled={!canExportPreview || isExporting}
               onClick={() => void handleCopyPreviewImage()}
             >
               Copy Image
             </button>
             <button
               className="button button-quiet"
-              disabled={!svgMarkup || !!renderError || isExporting}
+              disabled={!canExportPreview || isExporting}
               onClick={() => void handleExport("png")}
             >
               PNG
             </button>
             <button
               className="button button-quiet"
-              disabled={!svgMarkup || !!renderError || isExporting}
+              disabled={!canExportPreview || isExporting}
               onClick={() => void handleExport("svg")}
             >
               SVG
@@ -1975,40 +2122,41 @@ function App() {
           <div className="panel-header">
             <div>
               <p className="eyebrow">Preview</p>
-              <h2>{diagramType} Diagram</h2>
+              <h2>{isShowingDraft ? `AI Draft: ${previewDiagramType}` : `${diagramType} Diagram`}</h2>
             </div>
             <div className="preview-header-actions">
               <button
                 className="button button-quiet"
-                disabled={!svgMarkup || !!renderError}
+                disabled={!svgMarkup || !!previewError}
                 onClick={() => handleFitPreview("preview", "width")}
               >
                 Fit Width
               </button>
               <button
                 className="button button-quiet"
-                disabled={!svgMarkup || !!renderError}
+                disabled={!svgMarkup || !!previewError}
                 onClick={() => handleFitPreview("preview", "whole")}
               >
                 Whole
               </button>
               <button
                 className="button button-quiet"
-                disabled={!svgMarkup || !!renderError}
+                disabled={!svgMarkup || !!previewError}
                 onClick={() => void handlePreviewFullscreenToggle()}
               >
                 Full Screen
               </button>
               <div
-                aria-label={renderError ? `Preview needs attention: ${summarizeRenderError(renderError)}` : undefined}
-                className={`panel-badge ${renderError ? "panel-badge-danger" : ""}`}
-                title={renderError ? summarizeRenderError(renderError) : undefined}
+                aria-label={previewError ? `Preview needs attention: ${summarizeRenderError(previewError)}` : undefined}
+                className={`panel-badge ${previewError ? "panel-badge-danger" : ""}`}
+                title={previewError ? summarizeRenderError(previewError) : undefined}
               >
-                {isPreviewBlank ? "Ready" : renderError ? "Needs attention" : isRendering ? "Rendering" : "Live"}
+                {isPreviewEmpty ? "Ready" : previewError ? "Needs attention" : isRendering ? "Rendering" : isShowingDraft ? "AI draft" : "Live"}
               </div>
             </div>
           </div>
 
+          {renderDraftBanner()}
           <div className="preview-shell">{renderPreviewBody(false)}</div>
         </section>
       </main>
@@ -2049,24 +2197,24 @@ function App() {
             <div className="preview-focus-actions">
               <button
                 className="button button-quiet"
-                disabled={!svgMarkup || !!renderError}
+                disabled={!svgMarkup || !!previewError}
                 onClick={() => handleFitPreview("fullscreen", "width")}
               >
                 Fit Width
               </button>
               <button
                 className="button button-quiet"
-                disabled={!svgMarkup || !!renderError}
+                disabled={!svgMarkup || !!previewError}
                 onClick={() => handleFitPreview("fullscreen", "whole")}
               >
                 Whole
               </button>
               <div
-                aria-label={renderError ? `Preview needs attention: ${summarizeRenderError(renderError)}` : undefined}
-                className={`panel-badge ${renderError ? "panel-badge-danger" : ""}`}
-                title={renderError ? summarizeRenderError(renderError) : undefined}
+                aria-label={previewError ? `Preview needs attention: ${summarizeRenderError(previewError)}` : undefined}
+                className={`panel-badge ${previewError ? "panel-badge-danger" : ""}`}
+                title={previewError ? summarizeRenderError(previewError) : undefined}
               >
-                {isPreviewBlank ? "Ready" : renderError ? "Needs attention" : isRendering ? "Rendering" : "Full screen live"}
+                {isPreviewEmpty ? "Ready" : previewError ? "Needs attention" : isRendering ? "Rendering" : isShowingDraft ? "AI draft" : "Full screen live"}
               </div>
               <button className="button button-quiet" onClick={() => void closePreviewFullscreen()}>
                 Close
@@ -2074,6 +2222,7 @@ function App() {
             </div>
           </div>
 
+          {renderDraftBanner()}
           <div className="preview-focus-shell">{renderPreviewBody(true)}</div>
         </div>
       ) : null}

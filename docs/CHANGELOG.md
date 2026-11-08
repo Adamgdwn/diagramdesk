@@ -15,8 +15,12 @@
 - stopped the AI builder calling the model by itself whenever the text was invalid (H6). It no longer adds a "You" message the user didn't write or opens the panel; `Suggest Fix` is the way to ask
 - made AI replies that aren't strict JSON work (H7): plain prose shows as a message, a fenced diagram inside it becomes the draft, fences around the diagram are removed, and reasoning models' `<think>` text is ignored. LM Studio and llama.cpp are now asked for JSON with a schema, and asked again without one if they refuse it. Errors read as sentences, without Electron's "Error invoking remote method" prefix
 - fixed `OLLAMA_HOST=127.0.0.1:11434`, and other values without `http://`, not finding Ollama (H8)
+- made AI drafts reviewable before they're applied (H3). The draft is drawn in the preview under a banner with Apply, Discard, and Show Current; the editor doesn't change until Apply, and exports are paused while a draft is shown, so an unapplied draft is never exported
+- checked AI drafts with Mermaid before offering them (H4). One that doesn't render is sent back to the model once with Mermaid's error, without adding a message to the conversation, and one that still fails is shown with its error
+- made typing over a waiting AI draft say that the draft was replaced (L1)
+- made the preview and the draft check take turns with Mermaid, since `mermaid.parse` isn't queued the way `mermaid.render` is and both reset the same diagram state
 - model listing now gives up after 10 seconds instead of 2 minutes when a port accepts the connection but doesn't answer
-- the smoke test now runs against a stand-in Ollama server, so a real Ollama on the machine doesn't change the result, with steps for H2, H6, H7, and H8
+- the smoke test now runs against a stand-in Ollama server, so a real Ollama on the machine doesn't change the result, with steps for H2, H3, H4, H6, H7, and H8
 
 ## 0.2.3 - 2026-11-06
 

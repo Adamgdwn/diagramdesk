@@ -495,7 +495,6 @@ await step("menu fits the platform", async () => {
 });
 
 const modelSelect = page.locator(".assistant-toolbar select");
-const assistantMessages = () => page.locator(".assistant-message").allInnerTexts();
 
 async function askAssistant(prompt) {
   await page.locator(".assistant-composer textarea").fill(prompt);
@@ -540,6 +539,68 @@ await step("a prose AI reply shows as a message, not an error", async () => {
   );
   assert.equal(await page.locator(".assistant-inline-note-error").count(), 0);
   assert.equal(fakeOllama.chatRequests.length, 1);
+});
+
+const draftBanner = page.locator(".preview-panel .draft-banner");
+const previewText = () => page.evaluate(() => document.querySelector(".preview-stage svg")?.textContent ?? "");
+// The editor draws spaces as non-breaking spaces.
+const editorText = () => page.evaluate(() => [...document.querySelectorAll(".monaco-editor .view-line")]
+  .map((line) => line.textContent.replace(/\u00a0/g, " "))
+  .join("\n"));
+const draftReply = (updatedSource) => JSON.stringify({ assistantMessage: "Added a review step.", updatedSource });
+
+await step("an AI draft that doesn't render is sent back once, then shown in the preview until applied", async () => {
+  const requestsBefore = fakeOllama.chatRequests.length;
+  const userMessagesBefore = await page.locator(".assistant-message-user").count();
+  fakeOllama.replies.push(
+    draftReply("```mermaid\nflowchart TD\n  A[Start] --> R[Reviewed by AI --> B[End]\n```"),
+    draftReply("flowchart TD\n  A[Start] --> R[Reviewed by AI] --> B[End]")
+  );
+  await askAssistant("Add a review step");
+  await draftBanner.getByText("Showing the AI draft").waitFor({ timeout: 30_000 });
+
+  assert.equal(fakeOllama.chatRequests.length, requestsBefore + 2);
+  const retryMessages = fakeOllama.chatRequests.at(-1).messages;
+  assert.match(retryMessages.at(-1).content, /doesn't render/);
+  assert.equal(await page.locator(".assistant-message-user").count(), userMessagesBefore + 1);
+
+  await page.waitForFunction(() => document.querySelector(".preview-stage svg")?.textContent.includes("Reviewed by AI"), null, { timeout: 15_000 });
+  assert.ok(!(await editorText()).includes("Reviewed by AI"), "the draft reached the editor before it was applied");
+  assert.equal(await button("PNG").isDisabled(), true, "PNG export would have saved the unapplied draft");
+
+  await draftBanner.getByRole("button", { exact: true, name: "Show Current" }).click();
+  await page.waitForFunction(() => {
+    const text = document.querySelector(".preview-stage svg")?.textContent ?? "";
+    return text.includes("Start") && !text.includes("Reviewed by AI");
+  }, null, { timeout: 15_000 });
+  await page.waitForFunction(
+    () => [...document.querySelectorAll(".toolbar-main button")].find((item) => item.textContent.trim() === "PNG")?.disabled === false,
+    null,
+    { timeout: 15_000 }
+  );
+
+  await draftBanner.getByRole("button", { exact: true, name: "Show Draft" }).click();
+  await page.waitForFunction(() => document.querySelector(".preview-stage svg")?.textContent.includes("Reviewed by AI"), null, { timeout: 15_000 });
+  await draftBanner.getByRole("button", { exact: true, name: "Apply" }).click();
+  await draftBanner.waitFor({ state: "detached", timeout: 15_000 });
+  await page.waitForFunction(
+    () => [...document.querySelectorAll(".monaco-editor .view-line")].some((line) => line.textContent.replace(/\u00a0/g, " ").includes("Reviewed by AI")),
+    null,
+    { timeout: 15_000 }
+  );
+  assert.ok((await previewText()).includes("Reviewed by AI"));
+});
+
+await step("an AI draft that still doesn't render is reported, and Discard leaves the diagram alone", async () => {
+  const before = await editorText();
+  fakeOllama.replies.push(draftReply("flowchart TD\n  A[Broken --> B"), draftReply("flowchart TD\n  A[Still broken --> B"));
+  await askAssistant("Make it shorter");
+  await page.locator(".preview-panel .draft-banner-warning").waitFor({ timeout: 30_000 });
+  await page.locator(".preview-panel .preview-empty").getByText("This AI draft doesn't render").waitFor({ timeout: 15_000 });
+  await page.locator(".preview-panel .draft-banner").getByRole("button", { exact: true, name: "Discard" }).click();
+  await draftBanner.waitFor({ state: "detached", timeout: 15_000 });
+  await page.waitForFunction(() => document.querySelector(".preview-stage svg")?.textContent.includes("Reviewed by AI"), null, { timeout: 15_000 });
+  assert.equal(await editorText(), before);
 });
 
 await app.close().catch(() => {});

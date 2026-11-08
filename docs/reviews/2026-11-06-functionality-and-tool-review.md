@@ -78,9 +78,12 @@ Fixed on Linux, and checked by unit tests and new smoke steps that run on all th
 | ID | Problem | Fix | How it's checked |
 | --- | --- | --- | --- |
 | H2 | The AI builder could pick a model that can't chat | Ollama models without the `completion` capability are left out. Older Ollama versions that don't list capabilities are asked through `/api/show`, and kept if they still don't say. The default is a model known to chat. LM Studio and llama.cpp give no capabilities, so a name containing "embed" is only kept from being the default | Smoke step: only the chat model is listed, and it's selected. On this machine's Ollama 0.30.8, `nomic-embed-text` reports only `embedding` |
+| H3 | AI drafts couldn't be reviewed before applying | The draft is drawn in the preview under a banner with Apply, Discard, and Show Current. The editor doesn't change until Apply. Export and Copy Image are paused while the preview shows a draft, and the app tracks which text its image came from, so a draft can't be exported in the moment after switching back | Smoke step: the draft is in the preview and not the editor, PNG is disabled, Show Current and Show Draft switch the preview, and Apply puts it in the editor |
+| H4 | AI drafts weren't checked before being offered | `mermaid.parse` checks each draft. A failure goes back to the model once with Mermaid's error, as part of the same request, so no "You" message is added. A draft that still fails is shown with its error. The check and the preview share a queue, because Mermaid doesn't queue `parse` | Smoke steps: a fenced, broken first draft triggers exactly one retry and one visible user message, and two broken drafts end in a warning banner, the error in the preview, and Discard leaving the text alone |
 | H6 | Automatic repair called the model without being asked | The automatic repair is gone. `Suggest Fix` is the way to ask, and the notes say so | Smoke step: invalid text, with a model selected, makes no request in 3 seconds. The old repair fired after 0.9 |
 | H7 | AI failures showed raw errors, and common replies failed | Prose replies show as a message, and a fenced diagram inside one becomes the draft. Fences around the diagram, twice-escaped newlines, and `<think>` text are handled. LM Studio and llama.cpp are asked for JSON through a schema, and again without one if they return 400 or 422. Errors say what to do, without Electron's prefix | Unit tests for each reply shape. Smoke step: a prose reply shows as a message with no error |
 | H8 | `OLLAMA_HOST=127.0.0.1:11434` wasn't understood | Read with Ollama's own rules: `http` by default, port 11434 by default, or 80 and 443 with an explicit scheme. `0.0.0.0` and `::` connect to loopback, since Windows can't connect to them | Unit tests for 16 forms. The smoke test finds its server only through the scheme-less form |
+| L1 | Typing discarded a waiting AI draft with no notice | Typing still replaces the draft, since it was based on the earlier text, and the status bar now says so | Code reading |
 
 The JSON schema request was written to the OpenAI format that LM Studio and llama.cpp document, but neither was installed here, so it was only tested through the fallback logic. The 400 or 422 retry covers a server that rejects it.
 
@@ -90,8 +93,6 @@ The JSON schema request was written to the OpenAI format that LM Studio and llam
 
 | ID | Problem | Evidence | Suggested fix |
 | --- | --- | --- | --- |
-| H3 | **AI drafts can't be reviewed before applying.** The app says to review the draft in the preview, but nothing shows it. | Neither the preview nor the panel contains the draft. | Render the draft in the preview, with Apply and Discard. |
-| H4 | **AI drafts aren't checked before being offered.** | The real `qwen3:1.7b` model gave a draft that wouldn't render, on every run so far. | Run `mermaid.parse` on the draft first, and report or retry when it fails. |
 | H9 | **The renderer has no Content Security Policy, and its file handlers trust any path.** Saving and deleting accept any path with no check in the main process, and draft IDs are joined into paths unchecked. Bundling Monaco removed the known remote code path, but any future script injection would have broad file access. | Electron's own security warning, and code reading. | Add a strict policy, track approved paths in the main process, and validate draft IDs. |
 
 ### Medium and Low
@@ -104,7 +105,6 @@ The JSON schema request was written to the OpenAI format that LM Studio and llam
 | M4 | Medium | The theme isn't saved with the file, so a saved diagram reopens in the default theme. |
 | M5 | Medium | SVG exports keep HTML labels, 19 of them in the starter flowchart. Design and office tools often can't draw these, so labels may vanish there. This wasn't tested in those tools. The C1 fix only covers PNG and Copy Image. |
 | M7 | Medium | Delete permanently removes the file. `shell.trashItem` would send it to the Recycle Bin or Trash. |
-| L1 | Low | Typing a character discards a waiting AI draft with no notice. |
 | L2 | Low | Mermaid's 500-edge limit shows a confusing message: "500 edges found, but the limit is 500". |
 | L3 | Low | A never-saved tab says "Recovery draft only" and "Saved state", though neither is true. |
 | L4 | Low | The close prompt says it will quit and discard edits, even for one of several windows, and the draft still returns on the next launch. |

@@ -39,6 +39,9 @@ DiagramDesk is a Guided AI Labs local desktop editor for Mermaid diagram files. 
 - `OLLAMA_HOST` is read the way Ollama reads it, so `127.0.0.1:11434`, `localhost`, and `0.0.0.0` work without `http://`.
 - Ollama models that can't chat, such as embedding models, aren't listed. The model chosen by default is one the runtime says can chat. LM Studio and llama.cpp don't say, so their models are all listed, but one with "embed" in its name is never chosen by default.
 - The AI builder only contacts a model when you choose `Send to AI` or `Suggest Fix`. Invalid diagram text shows the error in the preview, and `Suggest Fix` asks for a fix.
+- An AI draft appears in the preview, under a banner with `Apply`, `Discard`, and `Show Current` or `Show Draft`. The editor and the saved file don't change until you choose `Apply`, and Undo takes an applied draft back out. Exports and Copy Image are paused while the preview shows a draft.
+- Each draft is checked before it's offered. If it doesn't render, the model is asked once more with Mermaid's error, without adding a message to the conversation. A draft that still doesn't render is shown with its error, so you can discard it, ask again, or apply it and fix it by hand.
+- Typing in the editor replaces a waiting draft, and the status bar says so.
 - A reply that isn't in the expected format still shows as a message, and a diagram inside it becomes the draft. Problems such as a stopped runtime or a model that can't chat are explained in plain language.
 - Selecting a starter diagram now opens the AI conversation with diagram-aware guidance instead of forcing the user to begin in raw Mermaid syntax.
 - The AI builder can focus on the whole diagram or a detected node from the current Mermaid text, then draft a full updated Mermaid document for the editor.
