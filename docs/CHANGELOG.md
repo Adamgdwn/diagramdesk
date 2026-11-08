@@ -4,6 +4,8 @@
 
 - fixed `npm run install:desktop` writing a launcher that does nothing when the checkout path has spaces, such as `01. Code/02. Applications`; the `Exec=` path is now quoted, and a path with a character a launcher can't use is refused with a message
 - made `npm run install:desktop` move file-type choices from the old `mermaid-tool.desktop` to `diagramdesk.desktop` in every user `mimeapps.list`, including desktop-specific ones such as COSMIC's `cosmic-mimeapps.list`, which `xdg-mime` doesn't update
+- stopped a second launch, such as double-clicking a file while the app is open, opening a window of its own as it quit. It handed the file over correctly, but that window failed to load and logged an unhandled error, and an unreadable file could show its error twice
+- added a smoke step that starts a real second copy of the app with a file, since the existing step only simulated the hand-over inside the running app
 - stopped Playwright MCP session files in `.playwright-mcp/` showing as untracked
 
 ## 0.2.3 - 2026-11-06

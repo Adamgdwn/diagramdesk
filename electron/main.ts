@@ -444,6 +444,12 @@ app.on("open-file", (event, filePath) => {
 });
 
 app.whenReady().then(async () => {
+  // Quitting doesn't stop ready firing. Without the lock, the running instance has already been handed
+  // this launch's file, so opening a window here would only fail to load, or show a second error.
+  if (!hasSingleInstanceLock) {
+    return;
+  }
+
   const launchDocuments: DocumentPayload[] = [];
   const launchFile = extractLaunchFile(process.argv);
   if (launchFile) {

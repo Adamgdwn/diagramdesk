@@ -2,7 +2,9 @@
 // Usage: npm run test:smoke [-- path/to/packaged/executable]
 // It uses throwaway profiles and folders, and stubs native dialogs so nothing on the machine is touched.
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -72,6 +74,39 @@ async function launchApp(userData) {
   }, { documents: workspace, realClipboard: usesRealClipboard });
 
   return { app, page: await app.firstWindow({ timeout: 60_000 }) };
+}
+
+// Starts the app again the way a double-click on a file does when it's already open, outside Playwright,
+// so it gets no test stubs and has to hand the file over and quit.
+function launchSecondInstance(userData, filePath) {
+  const executable = packagedExecutable ? path.resolve(packagedExecutable) : createRequire(import.meta.url)("electron");
+  const env = { ...process.env };
+  delete env.ELECTRON_RUN_AS_NODE;
+
+  return new Promise((resolve, reject) => {
+    const child = spawn(executable, [
+      ...(packagedExecutable ? [] : ["."]),
+      `--user-data-dir=${userData}`,
+      "--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1",
+      ...(process.platform === "linux" ? ["--no-sandbox"] : []),
+      filePath
+    ], { cwd: repoRoot, env, stdio: ["ignore", "pipe", "pipe"] });
+    let output = "";
+    child.stdout.on("data", (chunk) => { output += chunk; });
+    child.stderr.on("data", (chunk) => { output += chunk; });
+    const timer = setTimeout(() => {
+      child.kill();
+      reject(new Error("the second launch was still running after 30 seconds"));
+    }, 30_000);
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on("exit", (code) => {
+      clearTimeout(timer);
+      resolve({ code, output });
+    });
+  });
 }
 
 const userData = path.join(workspace, "profile");
@@ -330,6 +365,16 @@ await step("files handed over by the OS open in a tab", async () => {
   fs.writeFileSync(handedOver, "flowchart LR\n  A[Handed over] --> B[End]\n");
   await handOverFile(handedOver);
   await waitForActiveTab("handed over.mermaid");
+});
+
+await step("a second launch hands its file to the open window and quits", async () => {
+  const secondLaunchFile = path.join(workspace, "second launch.mmd");
+  fs.writeFileSync(secondLaunchFile, "flowchart LR\n  A[Second launch] --> B[End]\n");
+  const second = await launchSecondInstance(userData, secondLaunchFile);
+  assert.equal(second.code, 0, `the second launch exited with ${second.code}`);
+  // A window of its own fails to load once it's quitting, so this shows it didn't open one.
+  assert.doesNotMatch(second.output, /ERR_FAILED|UnhandledPromiseRejection/);
+  await waitForActiveTab("second launch.mmd");
 });
 
 await step("Enter starts a new line after a Mermaid keyword", async () => {
