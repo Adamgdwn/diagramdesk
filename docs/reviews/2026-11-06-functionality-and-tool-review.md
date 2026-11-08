@@ -71,18 +71,27 @@ The smoke test separately runs 20 steps with all remote hosts blocked. CI runs i
 | CI only built Mac installers for Apple Silicon | Checking the installer sizes | The build now uses both architectures in the config |
 | electron-builder tried to publish from CI, and failed without a token | First CI run | Installer scripts now pass `--publish never` |
 
+## 2026-11-08 - High Findings Fixed
+
+Fixed on Linux, and checked by unit tests and new smoke steps that run on all three systems in CI. The smoke test now talks to a stand-in Ollama server whose first model is an embedding model, reached through `OLLAMA_HOST` with no scheme.
+
+| ID | Problem | Fix | How it's checked |
+| --- | --- | --- | --- |
+| H2 | The AI builder could pick a model that can't chat | Ollama models without the `completion` capability are left out. Older Ollama versions that don't list capabilities are asked through `/api/show`, and kept if they still don't say. The default is a model known to chat. LM Studio and llama.cpp give no capabilities, so a name containing "embed" is only kept from being the default | Smoke step: only the chat model is listed, and it's selected. On this machine's Ollama 0.30.8, `nomic-embed-text` reports only `embedding` |
+| H6 | Automatic repair called the model without being asked | The automatic repair is gone. `Suggest Fix` is the way to ask, and the notes say so | Smoke step: invalid text, with a model selected, makes no request in 3 seconds. The old repair fired after 0.9 |
+| H7 | AI failures showed raw errors, and common replies failed | Prose replies show as a message, and a fenced diagram inside one becomes the draft. Fences around the diagram, twice-escaped newlines, and `<think>` text are handled. LM Studio and llama.cpp are asked for JSON through a schema, and again without one if they return 400 or 422. Errors say what to do, without Electron's prefix | Unit tests for each reply shape. Smoke step: a prose reply shows as a message with no error |
+| H8 | `OLLAMA_HOST=127.0.0.1:11434` wasn't understood | Read with Ollama's own rules: `http` by default, port 11434 by default, or 80 and 443 with an explicit scheme. `0.0.0.0` and `::` connect to loopback, since Windows can't connect to them | Unit tests for 16 forms. The smoke test finds its server only through the scheme-less form |
+
+The JSON schema request was written to the OpenAI format that LM Studio and llama.cpp document, but neither was installed here, so it was only tested through the fallback logic. The 400 or 422 retry covers a server that rejects it.
+
 ## Open Findings
 
 ### High
 
 | ID | Problem | Evidence | Suggested fix |
 | --- | --- | --- | --- |
-| H2 | **The AI builder can pick a model that can't chat.** It selects the first model listed, and on this machine that's an embedding model, so the first message fails. | Auto-selected `nomic-embed-text`, then got `does not support chat`. | Ask Ollama for each model's capabilities, and list only chat models. |
 | H3 | **AI drafts can't be reviewed before applying.** The app says to review the draft in the preview, but nothing shows it. | Neither the preview nor the panel contains the draft. | Render the draft in the preview, with Apply and Discard. |
 | H4 | **AI drafts aren't checked before being offered.** | The real `qwen3:1.7b` model gave a draft that wouldn't render, on every run so far. | Run `mermaid.parse` on the draft first, and report or retry when it fails. |
-| H6 | **Automatic repair calls the model without being asked.** Each pause on invalid text sends a request, adds a "You" message the user never wrote, and opens the panel. | 2 unrequested calls from 3 pauses in the final run. | Make repair opt-in through the existing Suggest Fix button. |
-| H7 | **AI failures show raw errors**, such as `Error invoking remote method...SyntaxError`. Common replies fail: plain prose, or a code fence inside the diagram. LM Studio and llama.cpp aren't asked for JSON at all. | Reproduced with a scripted server. | Strip fences, request JSON mode, and show friendly messages. |
-| H8 | **`OLLAMA_HOST=127.0.0.1:11434` isn't understood**, so Ollama isn't found. This format is common. | Zero runtimes found. The `http://` form works. | Add `http://` when the scheme is missing. |
 | H9 | **The renderer has no Content Security Policy, and its file handlers trust any path.** Saving and deleting accept any path with no check in the main process, and draft IDs are joined into paths unchecked. Bundling Monaco removed the known remote code path, but any future script injection would have broad file access. | Electron's own security warning, and code reading. | Add a strict policy, track approved paths in the main process, and validate draft IDs. |
 
 ### Medium and Low

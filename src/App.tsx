@@ -25,7 +25,8 @@ import {
   buildAssistantPlaceholder,
   buildAssistantWelcome,
   extractDiagramNodes,
-  normalizeMermaidSource
+  normalizeMermaidSource,
+  pickDefaultModelId
 } from "./lib/assistant";
 import {
   DEFAULT_DOCUMENT_NAME,
@@ -37,7 +38,7 @@ import {
   isSameDocumentPath
 } from "./lib/document";
 import { getSvgSize, renderSvgToPng, type PngExport, type SvgSize } from "./lib/export";
-import { describeFileError } from "./lib/file-errors";
+import { describeFileError, stripRemoteErrorPrefix } from "./lib/file-errors";
 import { resolveWheelGesture } from "./lib/preview-navigation";
 import { TEMPLATE_LIBRARY } from "./lib/templates";
 
@@ -259,7 +260,6 @@ function App() {
   const previewPanSessionRef = useRef<PreviewPanSession | null>(null);
   const previewCanvasRef = useRef<HTMLDivElement | null>(null);
   const previewFocusCanvasRef = useRef<HTMLDivElement | null>(null);
-  const renderFixRequestKeysRef = useRef<Set<string>>(new Set());
   const autoFittedTabsRef = useRef<Set<string>>(new Set());
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0] ?? initialTabRef.current;
@@ -283,9 +283,9 @@ function App() {
     : renderError && isActionableRenderError(renderError) && hasAssistantDraft
       ? "Preview issue detected. Review the AI draft; it may fix the current Mermaid issue."
       : renderError && isActionableRenderError(renderError) && selectedLocalModel
-        ? "Preview issue detected. The AI coach can suggest a Mermaid fix."
+        ? "Preview issue detected. Choose Suggest Fix to ask the AI coach for a Mermaid fix."
         : renderError && isActionableRenderError(renderError)
-          ? "Preview issue detected. Choose a local model and the AI coach can suggest a fix."
+          ? "Preview issue detected. Choose a local model, then Suggest Fix, to ask the AI coach for a fix."
           : hasAssistantDraft
             ? "A fresh AI draft is ready. Review it in the preview, then apply it when you like."
             : assistantRuntimeState.statusMessage;
@@ -303,20 +303,6 @@ function App() {
     ? "Save overwrites this file. Save As lets you make a copy somewhere else."
     : `Autosave is only for crash recovery. Use Save to create a .mmd file${storageInfo?.defaultSaveDirectory ? ` in ${storageInfo.defaultSaveDirectory} or another folder` : ""}.`;
 
-  const requestRenderFixSuggestion = useEffectEvent(async (errorMessage: string) => {
-    const requestKey = `${activeTab.id}\n${activeTab.source}\n${errorMessage}`;
-    if (renderFixRequestKeysRef.current.has(requestKey)) {
-      return;
-    }
-
-    renderFixRequestKeysRef.current.add(requestKey);
-    await sendAssistantPrompt(buildRenderFixPrompt(errorMessage), {
-      clearComposer: false,
-      openAssistant: true,
-      statusContext: "preview issue"
-    });
-  });
-
   const clearSelectedNode = useEffectEvent((tabId: string) => {
     updateTab(tabId, (tab) => ({ ...tab, selectedNodeId: undefined }));
   });
@@ -326,13 +312,11 @@ function App() {
   }, [activeTab.id]);
 
   useEffect(() => {
-    if (!selectedLocalModelId && localModels[0]) {
-      setSelectedLocalModelId(localModels[0].id);
-      return;
-    }
-
-    if (selectedLocalModelId && !localModels.some((model) => model.id === selectedLocalModelId)) {
-      setSelectedLocalModelId(localModels[0]?.id ?? "");
+    if (!selectedLocalModelId || !localModels.some((model) => model.id === selectedLocalModelId)) {
+      const defaultModelId = pickDefaultModelId(localModels);
+      if (defaultModelId !== selectedLocalModelId) {
+        setSelectedLocalModelId(defaultModelId);
+      }
     }
   }, [localModels, selectedLocalModelId]);
 
@@ -426,13 +410,13 @@ function App() {
     try {
       const runtimeState = await window.diagramDesk.getAssistantRuntimeState();
       setAssistantRuntimeState(runtimeState);
-      setSelectedLocalModelId((currentValue) => currentValue || runtimeState.models[0]?.id || "");
+      setSelectedLocalModelId((currentValue) => currentValue || pickDefaultModelId(runtimeState.models));
 
       if (options.setStatusOnError ?? false) {
         setStatusMessage(runtimeState.statusMessage);
       }
     } catch (error) {
-      const message = formatErrorMessage(error);
+      const message = stripRemoteErrorPrefix(formatErrorMessage(error));
       setAssistantError(message);
       if (options.setStatusOnError ?? false) {
         setStatusMessage(`AI builder unavailable: ${message}`);
@@ -590,42 +574,6 @@ function App() {
       window.clearTimeout(timeoutId);
     };
   }, [activeTab.id, activeTab.theme, deferredSource]);
-
-  useEffect(() => {
-    if (
-      !isActionableRenderError(renderError)
-      || isRendering
-      || isAssistantBusy
-      || isLoadingLocalModels
-      || !selectedLocalModel
-      || hasAssistantDraft
-      || !activeTab.source.trim()
-    ) {
-      return;
-    }
-
-    const requestKey = `${activeTab.id}\n${activeTab.source}\n${renderError}`;
-    if (renderFixRequestKeysRef.current.has(requestKey)) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      void requestRenderFixSuggestion(renderError);
-    }, 900);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [
-    activeTab.id,
-    activeTab.source,
-    hasAssistantDraft,
-    isAssistantBusy,
-    isLoadingLocalModels,
-    isRendering,
-    renderError,
-    selectedLocalModel
-  ]);
 
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
@@ -1362,7 +1310,7 @@ function App() {
           : `AI reviewed the current ${requestDiagramType.toLowerCase()} and replied with guidance.`
       );
     } catch (error) {
-      const message = formatErrorMessage(error);
+      const message = stripRemoteErrorPrefix(formatErrorMessage(error));
       setAssistantError(message);
       setStatusMessage(`AI builder failed: ${message}`);
     } finally {
@@ -1513,10 +1461,10 @@ function App() {
         }
 
         setAssistantRuntimeState(runtimeState);
-        setSelectedLocalModelId((currentValue) => currentValue || runtimeState.models[0]?.id || "");
+        setSelectedLocalModelId((currentValue) => currentValue || pickDefaultModelId(runtimeState.models));
       } catch (error) {
         if (!disposed) {
-          setAssistantError(formatErrorMessage(error));
+          setAssistantError(stripRemoteErrorPrefix(formatErrorMessage(error)));
         }
       } finally {
         if (!disposed) {
@@ -1923,7 +1871,7 @@ function App() {
                     </div>
                     <p>
                       DiagramDesk works without AI. Start Ollama or LM Studio when you want private
-                      diagram drafts and automatic syntax repair.
+                      diagram drafts and suggested syntax fixes.
                     </p>
                     <button
                       className="button button-quiet"

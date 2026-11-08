@@ -1,4 +1,11 @@
+import type { LocalModelInfo } from "../../shared/contracts";
 import { detectDiagramType } from "./document";
+
+// Picks a model the runtime says can chat, then one it says nothing about. A likely embedding model is
+// never picked by default, though it can still be chosen by hand.
+export function pickDefaultModelId(models: LocalModelInfo[]): string {
+  return (models.find((model) => model.chat === "yes") ?? models.find((model) => model.chat === "unknown"))?.id ?? "";
+}
 
 export interface DiagramNode {
   id: string;

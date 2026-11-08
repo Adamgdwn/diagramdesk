@@ -11,6 +11,12 @@
   - `minimatch` versions from 7.0.0 up to (not including) 11.0.1 become `^11.0.5`, for GHSA-g3hv-75wg-m249. This affects only `typescript-eslint`, `app-builder-lib`, and `@electron/universal`, which still ask for 9 or 10. Copies at 3 and 5 are left alone, because 11 changed how the package is loaded. A Linux package built before and after has the same files
 - added a smoke step that renders `$$x^2$$` labels, and checked it fails when KaTeX is broken
 - stopped Playwright MCP session files in `.playwright-mcp/` showing as untracked
+- fixed the AI builder auto-selecting a model that can't chat (review H2). Ollama models that report no chat capability, such as `nomic-embed-text`, are left out, older Ollama versions are asked per model, and the default is a model known to chat
+- stopped the AI builder calling the model by itself whenever the text was invalid (H6). It no longer adds a "You" message the user didn't write or opens the panel; `Suggest Fix` is the way to ask
+- made AI replies that aren't strict JSON work (H7): plain prose shows as a message, a fenced diagram inside it becomes the draft, fences around the diagram are removed, and reasoning models' `<think>` text is ignored. LM Studio and llama.cpp are now asked for JSON with a schema, and asked again without one if they refuse it. Errors read as sentences, without Electron's "Error invoking remote method" prefix
+- fixed `OLLAMA_HOST=127.0.0.1:11434`, and other values without `http://`, not finding Ollama (H8)
+- model listing now gives up after 10 seconds instead of 2 minutes when a port accepts the connection but doesn't answer
+- the smoke test now runs against a stand-in Ollama server, so a real Ollama on the machine doesn't change the result, with steps for H2, H6, H7, and H8
 
 ## 0.2.3 - 2026-11-06
 

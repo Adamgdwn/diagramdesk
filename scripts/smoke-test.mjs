@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
+import http from "node:http";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
@@ -32,9 +33,64 @@ async function step(name, action) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function launchApp(userData) {
+// A stand-in for Ollama, so the AI builder can be tested without a model, and a real Ollama on the
+// machine doesn't change the result. Its first model is an embedding model, as on the review machine.
+const fakeOllama = { chatRequests: [], replies: [] };
+const fakeOllamaServer = http.createServer((request, response) => {
+  let body = "";
+  request.on("data", (chunk) => {
+    body += chunk;
+  });
+  request.on("end", () => {
+    const send = (status, payload) => {
+      response.writeHead(status, { "Content-Type": "application/json" });
+      response.end(JSON.stringify(payload));
+    };
+
+    if (request.method === "GET" && request.url === "/api/tags") {
+      send(200, {
+        models: [
+          { capabilities: ["embedding"], name: "nomic-embed-text:latest" },
+          // Listed with no capabilities, as older Ollama does, so the app has to ask /api/show.
+          { name: "all-minilm:latest" },
+          { capabilities: ["completion"], details: { parameter_size: "1B" }, name: "smoke-chat:latest" }
+        ]
+      });
+    } else if (request.method === "POST" && request.url === "/api/show") {
+      send(200, { capabilities: JSON.parse(body).model === "all-minilm:latest" ? ["embedding"] : ["completion"] });
+    } else if (request.method === "POST" && request.url === "/api/chat") {
+      const chat = JSON.parse(body);
+      fakeOllama.chatRequests.push(chat);
+      const content = fakeOllama.replies.shift() ?? JSON.stringify({ assistantMessage: "No change.", updatedSource: "" });
+      send(200, { message: { content, role: "assistant" }, model: chat.model });
+    } else {
+      send(404, { error: "not found" });
+    }
+  });
+});
+await new Promise((resolve) => fakeOllamaServer.listen(0, "127.0.0.1", resolve));
+
+// A port with nothing on it, so LM Studio and llama.cpp aren't found here either.
+const closedPort = await new Promise((resolve) => {
+  const probe = http.createServer().listen(0, "127.0.0.1", () => {
+    const { port } = probe.address();
+    probe.close(() => resolve(port));
+  });
+});
+
+function buildAppEnv() {
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
+  delete env.LOCAL_OPENAI_BASE_URL;
+  // No scheme, which is how Ollama's own docs write it (H8).
+  env.OLLAMA_HOST = `127.0.0.1:${fakeOllamaServer.address().port}`;
+  env.LM_STUDIO_BASE_URL = `http://127.0.0.1:${closedPort}`;
+  env.LLAMA_CPP_BASE_URL = `http://127.0.0.1:${closedPort}`;
+  return env;
+}
+
+async function launchApp(userData) {
+  const env = buildAppEnv();
 
   const app = await electron.launch({
     args: [
@@ -80,8 +136,7 @@ async function launchApp(userData) {
 // so it gets no test stubs and has to hand the file over and quit.
 function launchSecondInstance(userData, filePath) {
   const executable = packagedExecutable ? path.resolve(packagedExecutable) : createRequire(import.meta.url)("electron");
-  const env = { ...process.env };
-  delete env.ELECTRON_RUN_AS_NODE;
+  const env = buildAppEnv();
 
   return new Promise((resolve, reject) => {
     const child = spawn(executable, [
@@ -439,6 +494,54 @@ await step("menu fits the platform", async () => {
   }
 });
 
+const modelSelect = page.locator(".assistant-toolbar select");
+const assistantMessages = () => page.locator(".assistant-message").allInnerTexts();
+
+async function askAssistant(prompt) {
+  await page.locator(".assistant-composer textarea").fill(prompt);
+  await page.locator(".assistant-actions").getByRole("button", { exact: true, name: "Send to AI" }).click();
+  await page.locator(".assistant-actions").getByRole("button", { exact: true, name: "Send to AI" })
+    .waitFor({ state: "visible", timeout: 30_000 });
+}
+
+await step("the AI builder lists only chat models, and picks one", async () => {
+  await page.waitForFunction(
+    () => document.querySelector(".assistant-toolbar select")?.textContent.includes("smoke-chat"),
+    null,
+    { timeout: 30_000 }
+  );
+  const options = await modelSelect.locator("option").allInnerTexts();
+  assert.deepEqual(options.map((text) => text.split(" • ")[0]), ["smoke-chat:latest"]);
+  assert.match(await modelSelect.inputValue(), /smoke-chat:latest$/);
+});
+
+await step("invalid text doesn't call the AI by itself", async () => {
+  const brokenFile = path.join(workspace, "broken.mmd");
+  fs.writeFileSync(brokenFile, "flowchart TD\n  A[Start --> B\n");
+  await handOverFile(brokenFile);
+  await waitForActiveTab("broken.mmd");
+  await page.locator(".preview-panel .panel-badge-danger").waitFor({ timeout: 15_000 });
+  // The removed automatic repair fired after 900 ms, so this waits well past it.
+  await sleep(3000);
+  assert.equal(fakeOllama.chatRequests.length, 0);
+});
+
+await step("a prose AI reply shows as a message, not an error", async () => {
+  const aiFile = path.join(workspace, "ai.mmd");
+  fs.writeFileSync(aiFile, "flowchart TD\n  A[Start] --> B[End]\n");
+  await handOverFile(aiFile);
+  await waitForActiveTab("ai.mmd");
+  fakeOllama.replies.push("That looks clear already. You could add a {decision} step between them.");
+  await askAssistant("Is this clear?");
+  await page.waitForFunction(
+    () => [...document.querySelectorAll(".assistant-message-assistant")].some((item) => item.textContent.includes("decision} step")),
+    null,
+    { timeout: 30_000 }
+  );
+  assert.equal(await page.locator(".assistant-inline-note-error").count(), 0);
+  assert.equal(fakeOllama.chatRequests.length, 1);
+});
+
 await app.close().catch(() => {});
 
 // A second launch with its own profile, because this one needs a damaged draft in place before startup.
@@ -471,6 +574,8 @@ await step("a damaged draft doesn't stop the others being recovered", async () =
 });
 await recovery.app.close().catch(() => {});
 
+fakeOllamaServer.closeAllConnections();
+await new Promise((resolve) => fakeOllamaServer.close(resolve));
 fs.rmSync(workspace, { force: true, maxRetries: 5, recursive: true, retryDelay: 500 });
 
 if (failures.length > 0) {

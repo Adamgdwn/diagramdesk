@@ -13,6 +13,10 @@ const REASONS_BY_CODE: Record<string, string> = {
 // Errors crossing from the main process arrive as "Error invoking remote method 'x': Error: ...".
 const REMOTE_ERROR_PREFIX = /^Error invoking remote method '[^']*':\s*(?:\w*Error:\s*)?/;
 
+export function stripRemoteErrorPrefix(message: string): string {
+  return message.replace(REMOTE_ERROR_PREFIX, "");
+}
+
 export function describeFileError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   const code = message.match(/\bE[A-Z]{2,}\b/)?.[0];

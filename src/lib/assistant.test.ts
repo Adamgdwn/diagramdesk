@@ -1,9 +1,39 @@
 import { describe, expect, it } from "vitest";
+import type { ChatSupport, LocalModelInfo } from "../../shared/contracts";
 import {
   buildAssistantPlaceholder,
   extractDiagramNodes,
-  normalizeMermaidSource
+  normalizeMermaidSource,
+  pickDefaultModelId
 } from "./assistant";
+
+function buildModel(modelId: string, chat: ChatSupport): LocalModelInfo {
+  return {
+    chat,
+    id: `ollama::${modelId}`,
+    label: modelId,
+    modelId,
+    runtimeId: "ollama",
+    runtimeLabel: "Ollama"
+  };
+}
+
+describe("pickDefaultModelId", () => {
+  it("prefers a model known to chat", () => {
+    expect(pickDefaultModelId([
+      buildModel("nomic-embed-text", "unlikely"),
+      buildModel("legacy", "unknown"),
+      buildModel("qwen3", "yes")
+    ])).toBe("ollama::qwen3");
+  });
+
+  it("falls back to a model that may chat, never a likely embedding model", () => {
+    expect(pickDefaultModelId([buildModel("nomic-embed-text", "unlikely"), buildModel("legacy", "unknown")]))
+      .toBe("ollama::legacy");
+    expect(pickDefaultModelId([buildModel("nomic-embed-text", "unlikely")])).toBe("");
+    expect(pickDefaultModelId([])).toBe("");
+  });
+});
 
 describe("extractDiagramNodes", () => {
   it("extracts flowchart nodes with readable labels", () => {

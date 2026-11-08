@@ -94,7 +94,11 @@ export interface AssistantResponse {
   updatedSource: string;
 }
 
+// "yes": the runtime says the model can chat. "unknown": it doesn't say. "unlikely": the name suggests an embedding model.
+export type ChatSupport = "yes" | "unknown" | "unlikely";
+
 export interface LocalModelInfo {
+  chat: ChatSupport;
   id: string;
   label: string;
   modelId: string;
