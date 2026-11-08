@@ -88,6 +88,8 @@ Fixed on Linux, and checked by unit tests and new smoke steps that run on all th
 
 The JSON schema request was written to the OpenAI format that LM Studio and llama.cpp document, but neither was installed here, so it was only tested through the fallback logic. The 400 or 422 retry covers a server that rejects it.
 
+A real round trip also passed on Linux, with this machine's Ollama 0.30.8 and the built app. `nomic-embed-text` wasn't listed, the 7B `substrate-qwen25coder7b` chat model was picked by default, and asking for a review step gave a draft in 4 seconds. It showed in the preview under the banner, with one "You" message in the conversation.
+
 ## Open Findings
 
 ### High
