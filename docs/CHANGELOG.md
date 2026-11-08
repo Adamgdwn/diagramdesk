@@ -19,7 +19,7 @@
 - checked AI drafts with Mermaid before offering them (H4). One that doesn't render is sent back to the model once with Mermaid's error, without adding a message to the conversation, and one that still fails is shown with its error
 - made typing over a waiting AI draft say that the draft was replaced (L1)
 - made the preview and the draft check take turns with Mermaid, since `mermaid.parse` isn't queued the way `mermaid.render` is and both reset the same diagram state
-- hardened the app against injected script (H9): the built page has a Content Security Policy that allows only the app's own scripts and no `eval`; Save, Delete, and Show Folder only accept files the user opened or chose, and Save shows the dialog for any other path; recovery draft IDs are validated before they become file names; and windows can't navigate away or open new ones. All 23 diagram types checked render under the policy with no violations
+- hardened the app against injected script (H9): the built page has a Content Security Policy that allows only the app's own scripts and no `eval`; Save, Delete, and Show Folder only accept files the user opened or chose, and Save shows the dialog for any other path; recovery draft IDs are validated before they become file names; and windows can't navigate away or open new ones. A tab recovered after a crash still saves straight to its diagram file. All 23 diagram types checked render under the policy with no violations
 - model listing now gives up after 10 seconds instead of 2 minutes when a port accepts the connection but doesn't answer
 - the smoke test now runs against a stand-in Ollama server, so a real Ollama on the machine doesn't change the result, with steps for H2, H3, H4, H6, H7, and H8, and two for H9
 

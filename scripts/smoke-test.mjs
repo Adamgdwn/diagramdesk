@@ -110,7 +110,9 @@ async function launchApp(userData) {
     electronApp.setPath("documents", documents);
     globalThis.nextSavePaths = [];
     globalThis.nextOpenPaths = [];
+    globalThis.saveDialogCount = 0;
     dialog.showSaveDialog = async () => {
+      globalThis.saveDialogCount += 1;
       const filePath = globalThis.nextSavePaths.shift();
       return filePath ? { canceled: false, filePath } : { canceled: true };
     };
@@ -671,6 +673,23 @@ fs.writeFileSync(path.join(recoveryDrafts, "good.json"), JSON.stringify({
   theme: "default",
   updatedAt: new Date().toISOString()
 }));
+// Two tabs that crashed with a file. Save goes straight to a diagram file (H9 trusts that), but a
+// file of another kind, which only a tampered draft would name, gets the save dialog.
+const recoveredFile = path.join(workspace, "recovered.mmd");
+const otherKindFile = path.join(workspace, "settings.cfg");
+fs.writeFileSync(recoveredFile, "flowchart LR\n  A[Before the crash] --> B[End]\n");
+fs.writeFileSync(otherKindFile, "keep me");
+const recoveredWithFile = (draftId, documentPath, content) => fs.writeFileSync(path.join(recoveryDrafts, `${draftId}.json`), JSON.stringify({
+  content,
+  documentName: path.basename(documentPath),
+  documentPath,
+  draftId,
+  theme: "default",
+  // Older than good.json, which has to stay the newest, and so the active tab, for the step above.
+  updatedAt: "2026-01-01T00:00:00.000Z"
+}));
+recoveredWithFile("withfile", recoveredFile, "flowchart LR\n  A[After the crash] --> B[End]\n");
+recoveredWithFile("otherkind", otherKindFile, "flowchart LR\n  A[Tampered] --> B[End]\n");
 
 const recovery = await launchApp(recoveryProfile);
 await step("a damaged draft doesn't stop the others being recovered", async () => {
@@ -686,6 +705,36 @@ await step("a damaged draft doesn't stop the others being recovered", async () =
   );
   assert.equal(fs.existsSync(path.join(recoveryDrafts, "damaged.json")), false);
   assert.equal(fs.readdirSync(path.join(recoveryDrafts, "unreadable")).length, 1);
+});
+
+await step("a recovered tab saves to its own diagram file, but not to a file of another kind", async () => {
+  const saveDialogCount = () => recovery.app.evaluate(() => globalThis.saveDialogCount);
+  const saveRecoveredTab = async (title) => {
+    await recovery.page.locator(".tabchip-main", { hasText: title }).click();
+    await recovery.page.waitForFunction(
+      (expected) => document.querySelector(".tabchip-active .tabchip-title")?.textContent.startsWith(expected),
+      title,
+      { timeout: 10_000 }
+    );
+    await recovery.page.locator(".toolbar-main").getByRole("button", { exact: true, name: "Save" }).click();
+  };
+
+  const dialogsBefore = await saveDialogCount();
+  await saveRecoveredTab("recovered.mmd");
+  const deadline = Date.now() + 10_000;
+  while (!fs.readFileSync(recoveredFile, "utf8").includes("After the crash") && Date.now() < deadline) {
+    await sleep(200);
+  }
+  assert.match(fs.readFileSync(recoveredFile, "utf8"), /After the crash/);
+  assert.equal(await saveDialogCount(), dialogsBefore, "Save asked where to save a file it should have trusted");
+
+  await saveRecoveredTab("settings.cfg");
+  const waitedUntil = Date.now() + 5_000;
+  while ((await saveDialogCount()) === dialogsBefore && Date.now() < waitedUntil) {
+    await sleep(200);
+  }
+  assert.equal(await saveDialogCount(), dialogsBefore + 1, "Save didn't ask before writing a file of another kind");
+  assert.equal(fs.readFileSync(otherKindFile, "utf8"), "keep me");
 });
 await recovery.app.close().catch(() => {});
 
