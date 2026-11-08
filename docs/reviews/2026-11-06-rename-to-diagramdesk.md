@@ -128,7 +128,7 @@ Done on the Linux laptop with Adam's go-ahead. The checkout there is `/home/adam
 | --- | --- |
 | Launches from the menu, with one launcher | Started through its desktop entry with `gio launch`, from this checkout and with the new `~/.config/DiagramDesk` profile. `diagramdesk.desktop` is the only DiagramDesk or Mermaid entry in the user and system application folders. How the menu looks still needs Adam. |
 | D icon in the menu and window | The entry's icon file exists, and the D shows in the app header. The menu and window icons still need Adam. |
-| Double-clicking a `.mmd` file | `xdg-mime` and both user lists give `diagramdesk.desktop`. `gio open` on a saved diagram started a second launch, which handed the file to the open window and quit. |
+| Double-clicking a `.mmd` file | `xdg-mime` and both user lists give `diagramdesk.desktop`. `gio open` on a saved diagram started a second launch, which quit as it should. The new smoke step confirms a second launch's file reaches the open window. The tab in the running app wasn't seen, so that still needs Adam. |
 | Recovered drafts appear as tabs | Checked on a copy of the new drafts folder: both appear, and the status bar says "Recovered 2 draft tabs". |
 | PNG export and Copy Image | The smoke test passes for both. Pasting into another app still needs Adam. |
 
