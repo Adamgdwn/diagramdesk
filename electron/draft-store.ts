@@ -30,7 +30,19 @@ function runInOrder<T>(key: string, operation: () => Promise<T>): Promise<T> {
   return next;
 }
 
+// Draft IDs come from the page and from files on disk, and become file names, so only plain IDs are allowed.
+// The app makes them with crypto.randomUUID.
+const DRAFT_ID_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
+
+export function isValidDraftId(draftId: unknown): draftId is string {
+  return typeof draftId === "string" && DRAFT_ID_PATTERN.test(draftId);
+}
+
 function getDraftPath(directory: string, draftId: string): string {
+  if (!isValidDraftId(draftId)) {
+    throw new Error("That recovery draft has an invalid name.");
+  }
+
   return path.join(directory, `${draftId}${DRAFT_EXTENSION}`);
 }
 
@@ -87,11 +99,16 @@ export function parseDraft(rawDraft: string, entryName: string): DraftPayload | 
     return null;
   }
 
+  const draftId = parsed.draftId ?? path.basename(entryName, DRAFT_EXTENSION);
+  if (!isValidDraftId(draftId)) {
+    return null;
+  }
+
   return {
     content: parsed.content,
-    draftId: parsed.draftId ?? path.basename(entryName, DRAFT_EXTENSION),
+    draftId,
     documentName: parsed.documentName ?? "recovered-draft.mmd",
-    documentPath: parsed.documentPath,
+    documentPath: typeof parsed.documentPath === "string" ? parsed.documentPath : undefined,
     theme: parsed.theme ?? "default",
     updatedAt: parsed.updatedAt ?? new Date().toISOString()
   };

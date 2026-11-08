@@ -10,7 +10,7 @@
 
 The app now builds, installs, and passes its end-to-end test on Windows, macOS, and Linux. All seven Critical findings are fixed, including PNG export, lost typing, and crash recovery. Each fix has a check that runs on all three systems, so it should stay fixed.
 
-Eight High findings remain, mostly in the optional AI builder. The most visible is that it can auto-select a model that can't chat. None of them affect editing, saving, or exporting without AI.
+No High findings remain. The seven that were open, six in the optional AI builder and one on security, were fixed on 2026-11-08, see [2026-11-08 - High Findings Fixed](#2026-11-08---high-findings-fixed). The Medium and Low findings below are still open.
 
 Three things can only be judged by a person. Nobody has tried a physical Mac, a Windows installer downloaded through a browser, or double-clicking a `.mmd` file. See [Not Tested](#not-tested).
 
@@ -83,6 +83,7 @@ Fixed on Linux, and checked by unit tests and new smoke steps that run on all th
 | H6 | Automatic repair called the model without being asked | The automatic repair is gone. `Suggest Fix` is the way to ask, and the notes say so | Smoke step: invalid text, with a model selected, makes no request in 3 seconds. The old repair fired after 0.9 |
 | H7 | AI failures showed raw errors, and common replies failed | Prose replies show as a message, and a fenced diagram inside one becomes the draft. Fences around the diagram, twice-escaped newlines, and `<think>` text are handled. LM Studio and llama.cpp are asked for JSON through a schema, and again without one if they return 400 or 422. Errors say what to do, without Electron's prefix | Unit tests for each reply shape. Smoke step: a prose reply shows as a message with no error |
 | H8 | `OLLAMA_HOST=127.0.0.1:11434` wasn't understood | Read with Ollama's own rules: `http` by default, port 11434 by default, or 80 and 443 with an explicit scheme. `0.0.0.0` and `::` connect to loopback, since Windows can't connect to them | Unit tests for 16 forms. The smoke test finds its server only through the scheme-less form |
+| H9 | No Content Security Policy, and file handlers that trusted any path | A policy is added to the built page: only the app's own scripts, no `eval`, no outside connections, and inline styles for Monaco and Mermaid. The main process lists the files the user opened or chose, and Save, Delete, and Show Folder accept only those. Save on another path shows the dialog. A recovered tab keeps its file only for diagram and text extensions. Draft IDs are validated, and windows can't navigate away or open new ones | Smoke steps: delete, show, and save refuse an outside file and leave it unchanged, a `../` draft ID is refused, the policy is present without `unsafe-eval`, an injected inline script doesn't run, and the whole run logs no violation. Separately, 23 diagram types, including ELK, C4, and an in-file dark theme, rendered under the policy with none |
 | L1 | Typing discarded a waiting AI draft with no notice | Typing still replaces the draft, since it was based on the earlier text, and the status bar now says so | Code reading |
 
 The JSON schema request was written to the OpenAI format that LM Studio and llama.cpp document, but neither was installed here, so it was only tested through the fallback logic. The 400 or 422 retry covers a server that rejects it.
@@ -91,9 +92,7 @@ The JSON schema request was written to the OpenAI format that LM Studio and llam
 
 ### High
 
-| ID | Problem | Evidence | Suggested fix |
-| --- | --- | --- | --- |
-| H9 | **The renderer has no Content Security Policy, and its file handlers trust any path.** Saving and deleting accept any path with no check in the main process, and draft IDs are joined into paths unchecked. Bundling Monaco removed the known remote code path, but any future script injection would have broad file access. | Electron's own security warning, and code reading. | Add a strict policy, track approved paths in the main process, and validate draft IDs. |
+None remain. All seven were fixed on 2026-11-08; see above.
 
 ### Medium and Low
 

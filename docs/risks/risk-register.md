@@ -4,7 +4,7 @@
 
 - Tier: Medium
 - Owner: Adam Goodwin
-- Last reviewed: 2026-11-06
+- Last reviewed: 2026-11-08
 
 ## Key Risks
 
@@ -17,5 +17,5 @@
 | R-005 | Local AI runtime availability or protocol differences across Ollama, LM Studio, and OpenAI-compatible servers may confuse users or produce inconsistent assistant behavior. | Medium | Medium | Runtime auto-detection, in-app status messaging, node-aware prompting, runbook guidance, and local-only fallback to manual editing when no runtime is available. | Adam Goodwin | Mitigated |
 | R-007 | Windows and macOS installers are not signed by a paid certificate, so SmartScreen and Gatekeeper warn users, and Smart App Control may block the Windows installer with no override. Smart App Control has blocked the installer's build helper on the development machine. The finished installer's wizard did open there, but that copy lacked the mark a browser download adds. | High | Medium | The owner decided on 2026-11-06 not to buy certificates, because the app is free. Ad-hoc signing on macOS so the app can launch at all, install steps in the deployment guide, and CI as the build path. | Adam Goodwin | Accepted |
 | R-008 | macOS is proven only on a CI runner. The app builds, installs from its `.dmg`, and passes the smoke test there, including the native menu. Real trackpad gestures, double-clicking files, the Gatekeeper prompt, and the Intel build haven't been exercised. | Medium | Low | CI builds and smoke tests macOS on every change, unit tests cover gesture handling, and the deployment guide has a macOS checklist for a physical Mac. | Adam Goodwin | Open |
-| R-009 | The renderer has no Content Security Policy, and its save and delete handlers accept any path. Bundling the editor removed the known remote code path, but any future script injection would have broad file access. | Low | High | Mermaid `securityLevel: strict`, context isolation, and no remote code loaded. Hardening is listed in the review. | Adam Goodwin | Open |
+| R-009 | A script injected into the page could misuse the app's file handlers. | Low | Medium | Since 2026-11-08: a Content Security Policy with no `eval` or outside scripts, file handlers that only accept files the user opened or chose, validated draft IDs, and no navigation or new windows. What remains: a tampered page could write a recovery draft pointing at another `.mmd`, `.mermaid`, `.md`, or `.txt` file, which Save would accept after the next launch. Styles are allowed inline. | Adam Goodwin | Mitigated |
 | R-006 | Brand assets may drift if future visual updates recolor, redraw, or replace the Guided AI Labs signal-spark treatment or DiagramDesk app icon unintentionally. | Low | Low | Keep the approved signal-spark SVG as a separate asset, preserve the existing DiagramDesk icon files unless explicitly requested, and include branding checks in deployment and recovery docs. | Adam Goodwin | Mitigated |

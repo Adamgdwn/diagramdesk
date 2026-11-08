@@ -37,6 +37,17 @@
 | Matching an already open file | Ignores letter case | Ignores letter case | Exact |
 | Installer | NSIS `.exe` | `.dmg` and `.zip`, ad-hoc signed | `.AppImage` and `.deb` |
 
+## Security Boundaries
+
+Last updated: 2026-11-08.
+
+- The renderer runs with context isolation and no Node access, and reaches the system only through the handlers in `preload.ts`.
+- The built page has a Content Security Policy, added by `vite.config.ts` at build time: scripts only from the app itself, no `eval`, no plugins, frames, or form posts, and no network connections. Styles may be inline because Monaco and Mermaid set them. `npm run dev` runs without it, because Vite's hot reload needs inline scripts.
+- The main process keeps a list of files the user opened, or chose in an open or save dialog, in this session. Save without a dialog, Delete, and Show Folder only accept those paths. Save on any other path shows the save dialog instead. A tab recovered after a crash keeps its file only if it ends in `.mmd`, `.mermaid`, `.md`, or `.txt`, because the page wrote that path into the draft.
+- Recovery draft IDs must be plain letters, digits, `-`, or `_`, since they become file names. A draft file with any other ID is treated as unreadable.
+- Windows can't open new windows or navigate away from the app's page.
+- Mermaid renders with `securityLevel: "strict"`.
+
 Files handed over by the system wait in the main process until the window's page has asked for its launch documents, which is also when its listener is attached, so a file can't be lost while a window is still loading.
 
 ## Data Flow

@@ -26,7 +26,7 @@ import type {
   SaveDocumentRequest,
   SaveResult
 } from "../shared/contracts";
-import { clearDraft, readDrafts, writeDraft } from "./draft-store";
+import { clearDraft, isValidDraftId, readDrafts, writeDraft } from "./draft-store";
 import {
   generateAssistantReply,
   getAssistantRuntimeState
@@ -49,6 +49,10 @@ const queuedLaunchDocuments: DocumentPayload[] = [];
 const windowsReadyForDocuments = new Set<number>();
 // Each draft belongs to the window using it, so a second window can't adopt it, then overwrite or delete it.
 const draftOwners = new Map<string, number>();
+// Files the user opened or chose in a dialog. The page can only save over, delete, or show these, so a page
+// that has been tampered with can't use the file handlers to reach anything else.
+const approvedDocumentPaths = new Set<string>();
+const DOCUMENT_EXTENSIONS = new Set(TEXT_FILE_FILTERS.flatMap((filter) => filter.extensions.map((extension) => `.${extension}`)));
 
 // Works around GPU driver problems on Linux desktops. Windows and macOS keep hardware acceleration.
 if (process.platform === "linux") {
@@ -68,6 +72,22 @@ function getErrorMessage(error: unknown): string {
   }
 
   return String(error);
+}
+
+function approveDocumentPath(filePath: string): void {
+  approvedDocumentPaths.add(path.resolve(filePath));
+}
+
+function isApprovedDocumentPath(filePath: unknown): filePath is string {
+  return typeof filePath === "string" && approvedDocumentPaths.has(path.resolve(filePath));
+}
+
+function requireApprovedDocumentPath(filePath: unknown): string {
+  if (!isApprovedDocumentPath(filePath)) {
+    throw new Error("DiagramDesk can only change files that were opened or saved in it. Use Save As to choose a file.");
+  }
+
+  return path.resolve(filePath);
 }
 
 function isReadableFile(candidate: string): boolean {
@@ -95,6 +115,7 @@ function extractLaunchFile(argv: string[]): string | null {
 
 async function readDocument(filePath: string): Promise<DocumentPayload> {
   const content = await fsp.readFile(filePath, "utf8");
+  approveDocumentPath(filePath);
   return {
     content,
     name: path.basename(filePath),
@@ -157,6 +178,13 @@ async function recoverDraftsForWindow(windowId: number): Promise<RecoveredDrafts
   const recovered = await readDrafts(getDraftDirectoryPath());
   const available = recovered.drafts.filter((draft) => (draftOwners.get(draft.draftId) ?? windowId) === windowId);
   available.forEach((draft) => draftOwners.set(draft.draftId, windowId));
+  // A tab recovered after a crash keeps its file. The page wrote that path into the draft, so it's only
+  // trusted for diagram and text files, which limits what a tampered draft could point Save at.
+  available.forEach((draft) => {
+    if (draft.documentPath && DOCUMENT_EXTENSIONS.has(path.extname(draft.documentPath).toLowerCase())) {
+      approveDocumentPath(draft.documentPath);
+    }
+  });
 
   return { ...recovered, drafts: available };
 }
@@ -296,7 +324,8 @@ async function persistTextDocument(
 ): Promise<SaveResult> {
   let destinationPath = request.path;
 
-  if (forceDialog || !destinationPath) {
+  // A path that wasn't opened or chosen here gets the dialog, as Save does for a new file.
+  if (forceDialog || !isApprovedDocumentPath(destinationPath)) {
     await fsp.mkdir(path.dirname(getDefaultDocumentSavePath(request)), { recursive: true });
 
     const { canceled, filePath } = await dialog.showSaveDialog(browserWindow, {
@@ -312,6 +341,7 @@ async function persistTextDocument(
   }
 
   await fsp.writeFile(destinationPath, request.content, "utf8");
+  approveDocumentPath(destinationPath);
   return {
     canceled: false,
     path: destinationPath
@@ -353,8 +383,10 @@ async function copyImageToClipboard(request: CopyImageRequest): Promise<void> {
   await clipboard.write([new ClipboardItem({ "image/png": png })]);
 }
 
-async function deleteTextDocument(filePath: string): Promise<void> {
-  await fsp.unlink(filePath);
+async function deleteTextDocument(filePath: unknown): Promise<void> {
+  const approvedPath = requireApprovedDocumentPath(filePath);
+  await fsp.unlink(approvedPath);
+  approvedDocumentPaths.delete(approvedPath);
 }
 
 async function createWindow(initialDocuments: DocumentPayload[] = []): Promise<BrowserWindow> {
@@ -374,6 +406,15 @@ async function createWindow(initialDocuments: DocumentPayload[] = []): Promise<B
 
   const windowId = browserWindow.id;
   windows.set(windowId, browserWindow);
+
+  // The app never opens pages or windows, so a link or script that tries is stopped here, before
+  // anything else can load in a window that has the app's file handlers.
+  browserWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  browserWindow.webContents.on("will-navigate", (event, url) => {
+    if (url !== browserWindow.webContents.getURL()) {
+      event.preventDefault();
+    }
+  });
 
   // A reload replaces the page and its listener, so documents wait again until the new page asks.
   browserWindow.webContents.on("did-start-loading", () => {
@@ -517,12 +558,12 @@ ipcMain.handle("file:open", async (event) => {
   return readSelectedDocuments(filePaths);
 });
 
-ipcMain.handle("file:delete", async (_event, filePath: string) => {
+ipcMain.handle("file:delete", async (_event, filePath: unknown) => {
   await deleteTextDocument(filePath);
 });
 
-ipcMain.handle("file:showInFolder", async (_event, filePath: string) => {
-  shell.showItemInFolder(filePath);
+ipcMain.handle("file:showInFolder", async (_event, filePath: unknown) => {
+  shell.showItemInFolder(requireApprovedDocumentPath(filePath));
 });
 
 ipcMain.handle("file:save", async (_event, request: SaveDocumentRequest) => {
@@ -546,11 +587,19 @@ ipcMain.handle("draft:getRecovered", async (event) => {
 });
 
 ipcMain.handle("draft:save", async (event, draft: DraftPayload) => {
+  if (!isValidDraftId(draft?.draftId)) {
+    throw new Error("That recovery draft has an invalid name.");
+  }
+
   draftOwners.set(draft.draftId, getWindowFromWebContents(event.sender).id);
   await writeDraft(getDraftDirectoryPath(), draft);
 });
 
-ipcMain.handle("draft:clear", async (_event, draftId: string) => {
+ipcMain.handle("draft:clear", async (_event, draftId: unknown) => {
+  if (!isValidDraftId(draftId)) {
+    throw new Error("That recovery draft has an invalid name.");
+  }
+
   draftOwners.delete(draftId);
   await clearDraft(getDraftDirectoryPath(), draftId);
 });

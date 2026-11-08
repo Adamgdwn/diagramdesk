@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { DraftPayload } from "../shared/contracts";
-import { clearDraft, parseDraft, readDrafts, writeDraft } from "./draft-store";
+import { clearDraft, isValidDraftId, parseDraft, readDrafts, writeDraft } from "./draft-store";
 
 function buildDraft(draftId: string, content = "flowchart TD\n  A --> B"): DraftPayload {
   return {
@@ -118,5 +118,26 @@ describe("parseDraft", () => {
       draftId: "abc",
       theme: "default"
     });
+  });
+
+  it("only accepts plain draft IDs, since they become file names", async () => {
+    expect(isValidDraftId(crypto.randomUUID())).toBe(true);
+    expect(isValidDraftId("good_draft-1")).toBe(true);
+    for (const draftId of ["", "../outside", "a/b", "a\\b", "a.b", "a b", 42, undefined]) {
+      expect(isValidDraftId(draftId)).toBe(false);
+    }
+
+    expect(parseDraft(JSON.stringify({ content: "x", draftId: "../outside" }), "a.json")).toBeNull();
+    expect(parseDraft(JSON.stringify({ content: "x" }), "bad name.json")).toBeNull();
+    expect(parseDraft(JSON.stringify({ content: "x", documentPath: 7 }), "ok.json")?.documentPath).toBeUndefined();
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "diagramdesk-draft-ids-"));
+    try {
+      // The main process awaits these inside async handlers, so a throw reaches the page as a rejection.
+      await expect(Promise.resolve().then(() => clearDraft(scratch, "../outside"))).rejects.toThrow("invalid name");
+      await expect(Promise.resolve().then(() => writeDraft(scratch, buildDraft("../outside")))).rejects.toThrow("invalid name");
+      expect(fs.readdirSync(path.dirname(scratch)).includes("outside.json")).toBe(false);
+    } finally {
+      fs.rmSync(scratch, { force: true, recursive: true });
+    }
   });
 });

@@ -542,65 +542,119 @@ await step("a prose AI reply shows as a message, not an error", async () => {
 });
 
 const draftBanner = page.locator(".preview-panel .draft-banner");
-const previewText = () => page.evaluate(() => document.querySelector(".preview-stage svg")?.textContent ?? "");
-// The editor draws spaces as non-breaking spaces.
-const editorText = () => page.evaluate(() => [...document.querySelectorAll(".monaco-editor .view-line")]
-  .map((line) => line.textContent.replace(/\u00a0/g, " "))
-  .join("\n"));
 const draftReply = (updatedSource) => JSON.stringify({ assistantMessage: "Added a review step.", updatedSource });
+// Says which check timed out, since a step can wait on several.
+const waitUntil = (label, condition, argument) => page.waitForFunction(condition, argument, { timeout: 15_000 })
+  .catch((error) => {
+    throw new Error(`${label}: ${String(error?.message ?? error).split("\n")[0]}`);
+  });
+const previewIncludes = (label, text) => waitUntil(
+  label,
+  (expected) => document.querySelector(".preview-stage svg")?.textContent.includes(expected),
+  text
+);
+// The editor wraps long lines and draws spaces as non-breaking spaces, so its text is read with
+// the lines run together. That's only good for checking text is absent; the draft file has the exact text.
+const editorScreenText = () => page.evaluate(() => [...document.querySelectorAll(".monaco-editor .view-line")]
+  .map((line) => line.textContent.replace(/\u00a0/g, " "))
+  .join(""));
+const appliedSource = "flowchart TD\n  A[Start] --> R[Reviewed by AI] --> B[End]";
 
 await step("an AI draft that doesn't render is sent back once, then shown in the preview until applied", async () => {
   const requestsBefore = fakeOllama.chatRequests.length;
   const userMessagesBefore = await page.locator(".assistant-message-user").count();
   fakeOllama.replies.push(
     draftReply("```mermaid\nflowchart TD\n  A[Start] --> R[Reviewed by AI --> B[End]\n```"),
-    draftReply("flowchart TD\n  A[Start] --> R[Reviewed by AI] --> B[End]")
+    draftReply(appliedSource)
   );
   await askAssistant("Add a review step");
   await draftBanner.getByText("Showing the AI draft").waitFor({ timeout: 30_000 });
 
   assert.equal(fakeOllama.chatRequests.length, requestsBefore + 2);
-  const retryMessages = fakeOllama.chatRequests.at(-1).messages;
-  assert.match(retryMessages.at(-1).content, /doesn't render/);
+  assert.match(fakeOllama.chatRequests.at(-1).messages.at(-1).content, /doesn't render/);
   assert.equal(await page.locator(".assistant-message-user").count(), userMessagesBefore + 1);
 
-  await page.waitForFunction(() => document.querySelector(".preview-stage svg")?.textContent.includes("Reviewed by AI"), null, { timeout: 15_000 });
-  assert.ok(!(await editorText()).includes("Reviewed by AI"), "the draft reached the editor before it was applied");
+  await previewIncludes("the draft never appeared in the preview", "Reviewed by AI");
+  assert.ok(!(await editorScreenText()).includes("Reviewed"), "the draft reached the editor before it was applied");
   assert.equal(await button("PNG").isDisabled(), true, "PNG export would have saved the unapplied draft");
 
   await draftBanner.getByRole("button", { exact: true, name: "Show Current" }).click();
-  await page.waitForFunction(() => {
+  await waitUntil("Show Current didn't bring back the current diagram", () => {
     const text = document.querySelector(".preview-stage svg")?.textContent ?? "";
     return text.includes("Start") && !text.includes("Reviewed by AI");
-  }, null, { timeout: 15_000 });
-  await page.waitForFunction(
-    () => [...document.querySelectorAll(".toolbar-main button")].find((item) => item.textContent.trim() === "PNG")?.disabled === false,
-    null,
-    { timeout: 15_000 }
+  });
+  await waitUntil(
+    "PNG export stayed off with the current diagram showing",
+    () => [...document.querySelectorAll(".toolbar-main button")].find((item) => item.textContent.trim() === "PNG")?.disabled === false
   );
 
   await draftBanner.getByRole("button", { exact: true, name: "Show Draft" }).click();
-  await page.waitForFunction(() => document.querySelector(".preview-stage svg")?.textContent.includes("Reviewed by AI"), null, { timeout: 15_000 });
+  await previewIncludes("Show Draft didn't bring the draft back", "Reviewed by AI");
   await draftBanner.getByRole("button", { exact: true, name: "Apply" }).click();
   await draftBanner.waitFor({ state: "detached", timeout: 15_000 });
-  await page.waitForFunction(
-    () => [...document.querySelectorAll(".monaco-editor .view-line")].some((line) => line.textContent.replace(/\u00a0/g, " ").includes("Reviewed by AI")),
-    null,
-    { timeout: 15_000 }
-  );
-  assert.ok((await previewText()).includes("Reviewed by AI"));
+  // Applying marks the tab unsaved, so its recovery draft holds the editor's exact text.
+  await waitForDraft((content) => content === appliedSource, 15_000);
 });
 
 await step("an AI draft that still doesn't render is reported, and Discard leaves the diagram alone", async () => {
-  const before = await editorText();
   fakeOllama.replies.push(draftReply("flowchart TD\n  A[Broken --> B"), draftReply("flowchart TD\n  A[Still broken --> B"));
   await askAssistant("Make it shorter");
   await page.locator(".preview-panel .draft-banner-warning").waitFor({ timeout: 30_000 });
   await page.locator(".preview-panel .preview-empty").getByText("This AI draft doesn't render").waitFor({ timeout: 15_000 });
-  await page.locator(".preview-panel .draft-banner").getByRole("button", { exact: true, name: "Discard" }).click();
+  await draftBanner.getByRole("button", { exact: true, name: "Discard" }).click();
   await draftBanner.waitFor({ state: "detached", timeout: 15_000 });
-  await page.waitForFunction(() => document.querySelector(".preview-stage svg")?.textContent.includes("Reviewed by AI"), null, { timeout: 15_000 });
-  assert.equal(await editorText(), before);
+  await previewIncludes("the current diagram didn't come back after Discard", "Reviewed by AI");
+  await sleep(1500);
+  assert.ok(readDraftContents().includes(appliedSource), "Discard changed the diagram");
+  assert.ok(!readDraftContents().some((content) => /broken/i.test(content)), "a discarded draft reached the editor");
+});
+
+await step("file handlers refuse a file the user didn't open or choose", async () => {
+  const outside = path.join(workspace, "outside.txt");
+  const outsideDraft = path.join(userData, "outside.json");
+  fs.writeFileSync(outside, "keep me");
+  fs.writeFileSync(outsideDraft, "{}");
+  const results = await page.evaluate(async (target) => {
+    const outcome = async (promise) => {
+      try {
+        await promise;
+        return "allowed";
+      } catch (error) {
+        return String(error?.message ?? error);
+      }
+    };
+
+    return {
+      clear: await outcome(window.diagramDesk.clearDraft("../outside")),
+      remove: await outcome(window.diagramDesk.deleteDocument(target)),
+      // With no dialog answer queued, the save dialog is cancelled.
+      save: await window.diagramDesk.saveDocument({ content: "overwritten", path: target, suggestedName: "outside.txt" }),
+      show: await outcome(window.diagramDesk.showDocumentInFolder(target))
+    };
+  }, outside);
+
+  assert.match(results.remove, /only change files/);
+  assert.match(results.show, /only change files/);
+  assert.match(results.clear, /invalid name/);
+  assert.equal(results.save.canceled, true);
+  assert.equal(fs.readFileSync(outside, "utf8"), "keep me");
+  assert.equal(fs.existsSync(outsideDraft), true);
+});
+
+await step("the page runs under a Content Security Policy that the app itself never trips", async () => {
+  const policy = await page.evaluate(() => document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content ?? "");
+  assert.match(policy, /script-src 'self'/);
+  assert.doesNotMatch(policy, /unsafe-eval/);
+  const violations = consoleMessages.filter((text) => /Content Security Policy|Refused to (load|execute|apply|evaluate|create)/i.test(text));
+  assert.deepEqual(violations, []);
+  // An injected inline script must not run.
+  const ran = await page.evaluate(() => {
+    const script = document.createElement("script");
+    script.textContent = "window.cspProbeRan = true;";
+    document.head.append(script);
+    return window.cspProbeRan === true;
+  });
+  assert.equal(ran, false);
 });
 
 await app.close().catch(() => {});
