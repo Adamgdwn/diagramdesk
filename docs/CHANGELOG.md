@@ -1,5 +1,11 @@
 # Change Log
 
+## Unreleased
+
+- fixed `npm run install:desktop` writing a launcher that does nothing when the checkout path has spaces, such as `01. Code/02. Applications`; the `Exec=` path is now quoted, and a path with a character a launcher can't use is refused with a message
+- made `npm run install:desktop` move file-type choices from the old `mermaid-tool.desktop` to `diagramdesk.desktop` in every user `mimeapps.list`, including desktop-specific ones such as COSMIC's `cosmic-mimeapps.list`, which `xdg-mime` doesn't update
+- stopped Playwright MCP session files in `.playwright-mcp/` showing as untracked
+
 ## 0.2.3 - 2026-11-06
 
 The first Windows and macOS build, and the first version published as a GitHub Release. Nothing was published under this number before, so the items recorded under it in April 2026 are included here.

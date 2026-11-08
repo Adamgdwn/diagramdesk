@@ -26,3 +26,6 @@ INITIAL_SCOPE.md
 
 # Regenerated locally by `graphify update .`, so it stays out of version control.
 graphify-out/
+
+# Session files written by the Playwright MCP browser tool.
+.playwright-mcp/
