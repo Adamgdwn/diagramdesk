@@ -377,6 +377,20 @@ await step("a second launch hands its file to the open window and quits", async 
   await waitForActiveTab("second launch.mmd");
 });
 
+// KaTeX is pinned by an override in package.json, ahead of the version Mermaid asks for,
+// so this checks it still loads and draws math labels.
+await step("math labels render", async () => {
+  const mathFile = path.join(workspace, "math.mmd");
+  fs.writeFileSync(mathFile, 'flowchart LR\n  A["$$x^2$$"] --> B["$$\\frac{1}{2}$$"]\n');
+  await handOverFile(mathFile);
+  await waitForActiveTab("math.mmd");
+  await page.waitForFunction(
+    () => document.querySelectorAll(".preview-stage svg math, .preview-stage svg .katex").length >= 2,
+    null,
+    { timeout: 30_000 }
+  );
+});
+
 await step("Enter starts a new line after a Mermaid keyword", async () => {
   await page.locator(".tabchip-add").click();
   await focusEditorEnd();

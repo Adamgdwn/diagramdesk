@@ -181,6 +181,8 @@ A 480-edge flowchart rendered in about 3.5 seconds. Mermaid's limit stops anythi
 
 `canvg` has been removed. `npm audit` still reports 12 moderate issues in development tools, which don't ship to users, and the 2 low production ones above.
 
+2026-11-08: `npm audit` reports none now. Two `overrides` in `package.json` hold `katex` at 0.18 and move the affected `minimatch` copies to 11. The change log says when each can go. The Mermaid 12 upgrade is no longer needed for security, only for its own features.
+
 ### Build, Test, and Automation
 
 | Tool | Assessment |

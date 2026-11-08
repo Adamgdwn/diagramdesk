@@ -135,3 +135,5 @@ Done on the Linux laptop with Adam's go-ahead. The checkout there is `/home/adam
 Kept until Adam has looked: `~/.config/Mermaid Tool/`, which still holds the original drafts, and `~/Documents/Mermaid Tool/`. Removed: `release/`, with the 0.2.1 installers (774 MB, rebuildable from `da08938`); `~/.config/mermaid-tool`, an April development profile with no diagrams in it; and `.playwright-mcp/`. Copies of every launcher and file-type list changed, the package's records, and the old launcher log are in `~/.local/state/diagramdesk/changes/2026-11-08-rename/`.
 
 If `.mmd` files stop opening in DiagramDesk after logging in again, check `xdg-mime query default text/x-mermaid` and `~/.config/cosmic-mimeapps.list` first, in case COSMIC rewrites its list.
+
+2026-11-08 follow-up: after Adam had looked, `~/.config/Mermaid Tool/` was removed, and the five diagrams in `~/Documents/Mermaid Tool/` were moved, not deleted, into `~/Documents/DiagramDesk/`. They were the only copies, and no draft pointed at them. Copies of both folders are in the rollback folder above.

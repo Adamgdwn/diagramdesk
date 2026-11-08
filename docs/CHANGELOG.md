@@ -6,6 +6,10 @@
 - made `npm run install:desktop` move file-type choices from the old `mermaid-tool.desktop` to `diagramdesk.desktop` in every user `mimeapps.list`, including desktop-specific ones such as COSMIC's `cosmic-mimeapps.list`, which `xdg-mime` doesn't update
 - stopped a second launch, such as double-clicking a file while the app is open, opening a window of its own as it quit. It handed the file over correctly, but that window failed to load and logged an unhandled error, and an unreadable file could show its error twice
 - added a smoke step that starts a real second copy of the app with a file, since the existing step only simulated the hand-over inside the running app
+- cleared both open Dependabot alerts, so `npm audit` reports none, with two `overrides` in `package.json`. Remove each once a normal upgrade brings in the fixed version:
+  - `katex` is held at `^0.18.2` under `mermaid`, for GHSA-238p-pmpm-9mq7. Mermaid 11 asks for 0.16, and Mermaid 12 moves to 0.18. Mermaid only uses KaTeX's public `renderToString`, and a new smoke step checks math labels still render
+  - `minimatch` versions from 7.0.0 up to (not including) 11.0.1 become `^11.0.5`, for GHSA-g3hv-75wg-m249. This affects only `typescript-eslint`, `app-builder-lib`, and `@electron/universal`, which still ask for 9 or 10. Copies at 3 and 5 are left alone, because 11 changed how the package is loaded. A Linux package built before and after has the same files
+- added a smoke step that renders `$$x^2$$` labels, and checked it fails when KaTeX is broken
 - stopped Playwright MCP session files in `.playwright-mcp/` showing as untracked
 
 ## 0.2.3 - 2026-11-06
