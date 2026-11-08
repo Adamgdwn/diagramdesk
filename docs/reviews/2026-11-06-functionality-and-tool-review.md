@@ -202,7 +202,7 @@ A 480-edge flowchart rendered in about 3.5 seconds. Mermaid's limit stops anythi
 - A physical Mac: real trackpad gestures, and the Gatekeeper prompt that a downloaded copy gets. CI files aren't quarantined
 - Running the Intel Mac build, which is built but not run, because CI's Macs are Apple Silicon
 - A Windows installer downloaded through a browser, and on Smart App Control, a full install through the wizard
-- Double-clicking files through real file associations
+- Double-clicking files through real file associations on Windows and macOS. Linux was checked on 2026-11-08; see `2026-11-06-rename-to-diagramdesk.md`
 - Real system dialogs and file manager, which were stubbed everywhere
 - Edit and View menu items
 - Accessibility, beyond what the tests touched

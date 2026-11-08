@@ -97,3 +97,41 @@ Ask Adam before installing or removing an app. Keep everything under the old fol
     - recovered drafts appear as tabs
     - a PNG export shows the labels, and Copy Image pastes into another app
 11. **Report back.** Post the results on issue #1 of `Adamgdwn/directlink`, and add them to `/home/adamgoodwin/DirectLink/Exchange/DIRECTLINK_CURRENT.md`.
+
+## 2026-11-08 - Linux Result
+
+Done on the Linux laptop with Adam's go-ahead. The checkout there is `/home/adamgoodwin/01. Code/02. Applications/DiagramDesk`, which Adam renamed from `mermaid-tool`; step 5 above names the Windows folder.
+
+| Step | Result |
+| --- | --- |
+| 1. Checkout | No uncommitted work. `main` fast-forwarded from `e35ee01` to `6e5f670`. |
+| 2. What existed | One live draft from 2026-09-08, a draft set aside in May as `4121786d-…json.bak-20260517154347`, and a stray `Eady Draft Doc Flows.mmd` in the drafts folder. Five saved diagrams in `~/Documents/Mermaid Tool`. A user launcher, `mermaid-tool.desktop`, already broken by the folder rename. The `mermaid-tool` 0.2.1 package in `/opt/Mermaid Tool`, with its own launcher. |
+| 3. Code | `npm ci`, lint, 39 unit tests, the build, and every smoke step pass. |
+| 4. Launcher | Two bugs found and fixed first, below. `diagramdesk.desktop` and `diagramdesk.xml` are installed, and the old launcher and file type are gone. |
+| 5. System package | Adam agreed. `mermaid-tool` 0.2.1 was removed and purged, so `/opt/Mermaid Tool` and its launcher are gone. One launcher remains. |
+| 6. Drafts | The live draft was copied unchanged. The May draft was restored too, with its tab renamed `recovered-2026-05-17.mmd` and its content unchanged. It doesn't render, because labels such as `[/learn/start-from-zero...]` read as a shape, which is probably why it was set aside. `AI Agency Flowchart.mmd`, saved the same day, looks like its later version. `Eady Draft Doc Flows.mmd` was copied to `~/Documents/DiagramDesk/`. |
+| 7. Saved diagrams | Left in `~/Documents/Mermaid Tool`. |
+| 8. Remote | `origin` is now `https://github.com/Adamgdwn/diagramdesk.git`. |
+| 9. Launcher path | Installed from the renamed folder. |
+| 10. Desktop check | Below. |
+| 11. Report | Posted on issue #1 and in `DIRECTLINK_CURRENT.md`. |
+
+### Bugs Found
+
+- `npm run install:desktop` wrote `Exec=` without quotes, so on a path with spaces the launcher did nothing. The old launcher worked only because its quotes were added by hand in the September folder migration. Fixed in `248ee8d`.
+- On COSMIC, `.mmd` files would still have opened with the removed launcher. `xdg-mime` only updates `mimeapps.list`, and COSMIC reads `cosmic-mimeapps.list` first. Fixed in `248ee8d`.
+- A second launch, such as double-clicking a file while the app is open, handed the file over correctly but then opened a window of its own as it quit, which failed to load. Fixed in `9d6a582`, with a smoke step that starts a real second copy of the app.
+
+### Desktop Check
+
+| Check | Result |
+| --- | --- |
+| Launches from the menu, with one launcher | Started through its desktop entry with `gio launch`, from this checkout and with the new `~/.config/DiagramDesk` profile. `diagramdesk.desktop` is the only DiagramDesk or Mermaid entry in the user and system application folders. How the menu looks still needs Adam. |
+| D icon in the menu and window | The entry's icon file exists, and the D shows in the app header. The menu and window icons still need Adam. |
+| Double-clicking a `.mmd` file | `xdg-mime` and both user lists give `diagramdesk.desktop`. `gio open` on a saved diagram started a second launch, which handed the file to the open window and quit. |
+| Recovered drafts appear as tabs | Checked on a copy of the new drafts folder: both appear, and the status bar says "Recovered 2 draft tabs". |
+| PNG export and Copy Image | The smoke test passes for both. Pasting into another app still needs Adam. |
+
+Kept until Adam has looked: `~/.config/Mermaid Tool/`, which still holds the original drafts, and `~/Documents/Mermaid Tool/`. Removed: `release/`, with the 0.2.1 installers (774 MB, rebuildable from `da08938`); `~/.config/mermaid-tool`, an April development profile with no diagrams in it; and `.playwright-mcp/`. Copies of every launcher and file-type list changed, the package's records, and the old launcher log are in `~/.local/state/diagramdesk/changes/2026-11-08-rename/`.
+
+If `.mmd` files stop opening in DiagramDesk after logging in again, check `xdg-mime query default text/x-mermaid` and `~/.config/cosmic-mimeapps.list` first, in case COSMIC rewrites its list.
