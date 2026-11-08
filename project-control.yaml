@@ -17,6 +17,8 @@ distribution:
   previous_name: Mermaid Tool, until 2026-11-06
   commercial: false
   channel: free through GitHub
+  # Owner decision, 2026-11-08. Replaces "occasional tool, no roadmap" from the 2026-09-05 portfolio review.
+  stage: full release
   code_signing: none
   code_signing_notes: Accepted risk R-007. Users get system warnings, and Smart App Control may block the Windows installer.
 environments:

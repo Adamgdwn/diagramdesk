@@ -2,6 +2,7 @@
 
 ## Just Completed
 
+- 2026-11-08: fixed all seven High findings from the review, in the AI builder and on security, and finished the rename on Linux
 - renamed the app from Mermaid Tool to DiagramDesk
 - added Windows and macOS support, with installers built and smoke tested in CI on all three systems
 - fixed the seven critical findings from the review, including PNG export, lost typing, and crash recovery
@@ -17,8 +18,8 @@
 
 ## Now
 
-- fix the remaining High findings in `docs/reviews/2026-11-06-functionality-and-tool-review.md`, which are mostly in the AI builder
-- finish the rename on Linux, using the steps in `docs/reviews/2026-11-06-rename-to-diagramdesk.md`
+- work through the open Medium and Low findings in `docs/reviews/2026-11-06-functionality-and-tool-review.md`
+- hold the governance alignment review that is due before the first production release, now that DiagramDesk is a full release
 - try the installers by hand: a browser-downloaded Windows setup, and a physical Mac
 - publish free installers through GitHub Releases
 - stabilize the new multi-tab, multi-window, and AI-guided workflow
